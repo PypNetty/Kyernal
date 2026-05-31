@@ -14,7 +14,7 @@ export default function FormationSelectPage() {
   const [learningGoal, setLearningGoal] = useState('');
   const [btnHovered, setBtnHovered] = useState(false);
   const t = THEMES[mode];
-  const { redirect, change } = useSearch({ from: '/formation' });
+  const { change } = useSearch({ from: '/formation' });
   const { data: session } = useAuth();
   const selectMutation = useSelectFormation();
 
@@ -323,7 +323,7 @@ export default function FormationSelectPage() {
               height: '44px',
               borderRadius: '8px',
               border: 'none',
-              background: t.btnPrimaryBg,
+              background: t.btnPrimary,
               color: t.btnPrimaryText,
               fontSize: '14px',
               fontWeight: 600,
@@ -336,18 +336,6 @@ export default function FormationSelectPage() {
               : "Accéder à l'Arena"}
           </button>
         </form>
-
-        <p
-          style={{
-            marginTop: '16px',
-            fontSize: '12px',
-            color: t.textMuted,
-            textAlign: 'center',
-          }}
-        >
-          Redirection vers{' '}
-          <code style={{ fontSize: '11px' }}>{redirect}</code> après validation
-        </p>
       </main>
     </div>
   );
