@@ -2,42 +2,19 @@ import type { TssrCompetenceCode } from '../../../auth/data/tssrReferential';
 import {
   TSSR_CCPS,
   TSSR_COMPETENCES,
+  TSSR_COMPETENCES_TRANSVERSALES,
   TSSR_REFERENTIAL_META,
 } from '../../../auth/data/tssrReferential';
 import type {
+  FormationCcp,
+  FormationProgressionBundle,
+  FormationTicket,
+} from './formationBundleTypes';
+import type {
   LearnerProgress,
-  NodeDomain,
   SkillEdge,
   SkillNode,
 } from './progressionConfig';
-
-export interface FormationTicket {
-  id: string;
-  incidentId: string;
-  title: string;
-  competenceCode: TssrCompetenceCode;
-  ccpCode: 'CCP1' | 'CCP2';
-  priority: 'urgent' | 'haute' | 'moyenne' | 'basse';
-  status: 'en-cours' | 'a-faire' | 'resolu' | 'annule';
-  updatedAt: string;
-}
-
-export interface FormationCompetenceItem {
-  id: string;
-  code: TssrCompetenceCode;
-  label: string;
-  validated: boolean;
-  ticketIds: string[];
-}
-
-export interface FormationCcp {
-  id: string;
-  code: 'CCP1' | 'CCP2';
-  title: string;
-  description: string;
-  color: string;
-  competences: FormationCompetenceItem[];
-}
 
 const CCP_COLORS: Record<'CCP1' | 'CCP2', string> = {
   CCP1: '#0055e5',
@@ -326,11 +303,16 @@ function buildFormationCcps(): FormationCcp[] {
 
 export const TSSR_FORMATION_CCPS = buildFormationCcps();
 
-export const TSSR_PROGRESSION = {
-  referential: TSSR_REFERENTIAL_META,
+export const TSSR_PROGRESSION_BUNDLE: FormationProgressionBundle = {
+  formationId: 'tssr',
   nodes: TSSR_SKILL_NODES,
   edges: TSSR_SKILL_EDGES,
-  tickets: TSSR_TICKETS,
+  tickets: [...TSSR_TICKETS],
   ccps: TSSR_FORMATION_CCPS,
   mockProgress: TSSR_MOCK_PROGRESS,
-} as const;
+  referential: {
+    badge: `${TSSR_REFERENTIAL_META.sigle} · millésime ${TSSR_REFERENTIAL_META.millesime}`,
+    treeLabel: `REAC ${TSSR_REFERENTIAL_META.sigle} 2023`,
+    transversalLabels: TSSR_COMPETENCES_TRANSVERSALES,
+  },
+};

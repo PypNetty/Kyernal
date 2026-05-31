@@ -1,9 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useContext } from 'react';
-import { useAuth } from '../../../auth';
-import { getFormationProgression } from '../../skills/data/formationProgression';
 import { LayoutCtx } from '../../layout/components/Layout';
+import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
 
 // --- TYPES ---
 type TicketStatus = 'en-cours' | 'a-faire' | 'resolu' | 'annule';
@@ -19,28 +18,6 @@ interface Ticket {
   updatedAt: string;
   vmActive?: boolean;
 }
-
-const LEGACY_TICKETS: Ticket[] = [
-  {
-    id: 'INC-042',
-    incidentId: '042',
-    title: 'Apache ne répond plus sur le port 80',
-    status: 'en-cours',
-    priority: 'urgent',
-    competence: 'CCP2',
-    updatedAt: "À l'instant",
-    vmActive: true,
-  },
-  {
-    id: 'INC-088',
-    incidentId: '088',
-    title: 'Problème DNS interne',
-    status: 'en-cours',
-    priority: 'moyenne',
-    competence: 'CCP1',
-    updatedAt: 'Il y a 2h',
-  },
-];
 
 // --- STATUT CONFIG ---
 const STATUS_CONFIG: Record<
@@ -442,25 +419,24 @@ function TicketRow({
 export default function MyTickets() {
   const { dark, startSession } = useContext(LayoutCtx);
   const navigate = useNavigate();
-  const { data: session } = useAuth();
-  const bundle = useMemo(
-    () => getFormationProgression(session?.formationId),
-    [session?.formationId],
-  );
+  const bundle = useFormationBundle();
 
-  const tickets: Ticket[] = useMemo(() => {
-    if (!bundle.isOfficialReferential) return LEGACY_TICKETS;
-    return bundle.tickets.map((t) => ({
-      id: t.id,
-      incidentId: t.incidentId,
-      title: t.title,
-      status: t.status,
-      priority: t.priority,
-      competence: `${t.ccpCode} · ${t.competenceCode}`,
-      updatedAt: t.updatedAt,
-      vmActive: t.status === 'en-cours',
-    }));
-  }, [bundle]);
+  const tickets: Ticket[] = useMemo(
+    () =>
+      bundle.tickets.map((t) => ({
+        id: t.id,
+        incidentId: t.incidentId,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        competence: bundle.referential
+          ? `${t.ccpCode} · ${t.competenceCode}`
+          : t.competenceCode,
+        updatedAt: t.updatedAt,
+        vmActive: t.status === 'en-cours',
+      })),
+    [bundle],
+  );
 
   const border = dark ? '#1f1f1f' : '#e8e8e5';
   const bg = dark ? '#0e0f11' : '#f7f7f9';

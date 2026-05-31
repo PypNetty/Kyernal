@@ -1,9 +1,7 @@
-import React, { useState, useContext, useMemo, useEffect } from 'react';
-import { useAuth } from '../../../auth';
-import { TSSR_COMPETENCES_TRANSVERSALES } from '../../../auth/data/tssrReferential';
+import React, { useState, useContext, useEffect } from 'react';
 import { LayoutCtx } from '../../layout/components/Layout';
-import { getFormationProgression } from '../data/formationProgression';
-import type { FormationCcp } from '../data/tssrProgression';
+import type { FormationCcp } from '../data/formationBundleTypes';
+import { useFormationBundle } from '../hooks/useFormationBundle';
 
 function getProgress(ccp: FormationCcp) {
   const total = ccp.competences.length;
@@ -13,17 +11,13 @@ function getProgress(ccp: FormationCcp) {
 
 export default function CompetencePanel() {
   const { dark } = useContext(LayoutCtx);
-  const { data: session } = useAuth();
-  const bundle = useMemo(
-    () => getFormationProgression(session?.formationId),
-    [session?.formationId],
-  );
+  const bundle = useFormationBundle();
   const ccps = bundle.ccps;
   const [selected, setSelected] = useState(ccps[0]?.id ?? '');
 
   useEffect(() => {
     setSelected(ccps[0]?.id ?? '');
-  }, [session?.formationId]);
+  }, [bundle.formationId]);
 
   const border = dark ? '#27282b' : '#e8e8e5';
   const bg = dark ? '#0e0f11' : '#f7f7f9';
@@ -73,7 +67,7 @@ export default function CompetencePanel() {
         >
           <span style={{ fontSize: '13px', fontWeight: 600, color: textMain }}>
             Compétences
-            {bundle.isOfficialReferential && (
+            {bundle.referential?.badge && (
               <span
                 style={{
                   display: 'block',
@@ -83,7 +77,7 @@ export default function CompetencePanel() {
                   marginTop: 2,
                 }}
               >
-                REAC TSSR · millésime 02
+                {bundle.referential.badge}
               </span>
             )}
           </span>
@@ -432,7 +426,7 @@ export default function CompetencePanel() {
                           opacity: group === 'validated' ? 1 : 0.8,
                         }}
                       >
-                        {bundle.isOfficialReferential && (
+                        {bundle.referential && (
                           <span
                             style={{
                               fontSize: '10px',
@@ -473,7 +467,7 @@ export default function CompetencePanel() {
             );
           })}
 
-          {bundle.isOfficialReferential && (
+          {bundle.referential?.transversalLabels && (
             <div style={{ marginTop: 8, paddingTop: 16, borderTop: `1px solid ${border}` }}>
               <div
                 style={{
@@ -495,7 +489,7 @@ export default function CompetencePanel() {
                   lineHeight: 1.8,
                 }}
               >
-                {TSSR_COMPETENCES_TRANSVERSALES.map((label) => (
+                {bundle.referential.transversalLabels.map((label) => (
                   <li key={label}>{label}</li>
                 ))}
               </ul>

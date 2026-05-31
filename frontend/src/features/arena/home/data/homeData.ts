@@ -1,4 +1,4 @@
-import { getFormationProgression } from '../../skills/data/formationProgression';
+import type { FormationProgressionBundle } from '../../skills/data/formationBundleTypes';
 import {
   computeNodeStatus,
   getCurrentLevel,
@@ -45,19 +45,22 @@ function incidentRouteId(incidentId: string): string {
   return incidentId.replace(/^INC-/, '');
 }
 
-function findNodeById(nodeId: string, formationId?: string | null): SkillNode {
-  const { nodes } = getFormationProgression(formationId);
-  const node = nodes.find((n) => n.id === nodeId);
+function findNodeById(
+  bundle: FormationProgressionBundle,
+  nodeId: string,
+): SkillNode {
+  const node = bundle.nodes.find((n) => n.id === nodeId);
   if (!node) throw new Error(`Unknown skill node: ${nodeId}`);
   return node;
 }
 
-export function getLastSession(formationId?: string | null): LastSession | null {
-  const { mockProgress: progress } = getFormationProgression(formationId);
-  const inProgress = progress.find((p) => p.status === 'in-progress');
+export function getLastSession(
+  bundle: FormationProgressionBundle,
+): LastSession | null {
+  const inProgress = bundle.mockProgress.find((p) => p.status === 'in-progress');
   if (!inProgress) return null;
 
-  const node = findNodeById(inProgress.nodeId, formationId);
+  const node = findNodeById(bundle, inProgress.nodeId);
   if (!node.incidentId) return null;
 
   return {
@@ -73,17 +76,16 @@ export function getLastSession(formationId?: string | null): LastSession | null 
 }
 
 export function getRecommendedIncident(
-  formationId?: string | null,
+  bundle: FormationProgressionBundle,
 ): RecommendedIncident | null {
-  const { nodes, edges, mockProgress: progress } =
-    getFormationProgression(formationId);
+  const { nodes, edges, mockProgress: progress } = bundle;
   const inProgressNodeId = progress.find(
     (p) => p.status === 'in-progress',
   )?.nodeId;
 
   const available = progress.filter((p) => p.status === 'available');
   if (available.length > 0) {
-    const node = findNodeById(available[0].nodeId, formationId);
+    const node = findNodeById(bundle, available[0].nodeId);
     if (!node.incidentId) return null;
     return {
       node,
@@ -102,9 +104,9 @@ export function getRecommendedIncident(
     for (const targetId of nextTargets) {
       const status = computeNodeStatus(targetId, progress, edges);
       if (status === 'locked' || status === 'available') {
-        const node = findNodeById(targetId, formationId);
+        const node = findNodeById(bundle, targetId);
         if (!node.incidentId) continue;
-        const current = findNodeById(inProgressNodeId, formationId);
+        const current = findNodeById(bundle, inProgressNodeId);
         return {
           node,
           incidentId: node.incidentId,
@@ -120,16 +122,15 @@ export function getRecommendedIncident(
 }
 
 export function getProgressSnapshot(
-  formationId?: string | null,
+  bundle: FormationProgressionBundle,
 ): ProgressSnapshot {
-  const { nodes, edges, mockProgress: progress } =
-    getFormationProgression(formationId);
+  const { nodes, edges, mockProgress: progress } = bundle;
   const totalXp = getTotalXp(progress);
   const level = getCurrentLevel(totalXp);
   const completedLabs = progress.filter((p) => p.status === 'completed').length;
   const inProgress = progress.find((p) => p.status === 'in-progress');
   const inProgressLab = inProgress
-    ? findNodeById(inProgress.nodeId, formationId).title
+    ? findNodeById(bundle, inProgress.nodeId).title
     : null;
 
   const domains: NodeDomain[] = ['linux', 'web', 'reseau', 'securite', 'cloud'];
@@ -154,4 +155,3 @@ export function getProgressSnapshot(
     domainProgress: domainProgress.filter((d) => d.total > 0),
   };
 }
-

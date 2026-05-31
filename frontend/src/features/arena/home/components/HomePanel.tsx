@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useAuth } from '../../../auth';
+import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
 import {
   AUTONOMY_SCORE,
   getLastSession,
@@ -118,10 +119,10 @@ function FocalRecommendedCard({ incident }: { incident: RecommendedIncident }) {
 
 export default function HomePanel() {
   const { data: session } = useAuth();
-  const formationId = session?.formationId;
-  const lastSession = getLastSession(formationId);
-  const recommended = getRecommendedIncident(formationId);
-  const snapshot = getProgressSnapshot(formationId);
+  const bundle = useFormationBundle();
+  const lastSession = getLastSession(bundle);
+  const recommended = getRecommendedIncident(bundle);
+  const snapshot = getProgressSnapshot(bundle);
 
   const firstName = session?.user?.name?.split(' ')[0] ?? 'Apprenant';
   const xpPercent = Math.min(

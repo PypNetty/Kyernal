@@ -1,6 +1,5 @@
-import React, { useState, useCallback, useContext, useEffect, useMemo } from 'react';
-import { useAuth } from '../../../auth';
-import { getFormationProgression } from '../data/formationProgression';
+import React, { useState, useCallback, useContext, useEffect } from 'react';
+import { useFormationBundle } from '../hooks/useFormationBundle';
 import ReactFlow, {
   Node,
   Edge,
@@ -392,11 +391,7 @@ function StatsPanel({
 // ── COMPOSANT PRINCIPAL ───────────────────────────────────────────────────
 export default function SkillTreePanel() {
   const { dark } = useContext(LayoutCtx);
-  const { data: session } = useAuth();
-  const bundle = useMemo(
-    () => getFormationProgression(session?.formationId),
-    [session?.formationId],
-  );
+  const bundle = useFormationBundle();
   const [isFormateur, setIsFormateur] = useState(false);
   const [progress, setProgress] = useState<LearnerProgress[]>(
     bundle.mockProgress,
@@ -406,7 +401,7 @@ export default function SkillTreePanel() {
   useEffect(() => {
     setProgress(bundle.mockProgress);
     setSelectedNode(null);
-  }, [session?.formationId]);
+  }, [bundle.formationId, bundle.mockProgress]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(
     buildNodes(bundle.nodes, bundle.edges, progress, isFormateur),
@@ -420,11 +415,8 @@ export default function SkillTreePanel() {
     setEdges(buildEdges(bundle.edges, progress));
   }, [bundle.nodes, bundle.edges, progress, isFormateur, setNodes, setEdges]);
 
-  // Mise à jour quand le rôle change
   const handleRoleToggle = () => {
-    const next = !isFormateur;
-    setIsFormateur(next);
-    setNodes(buildNodes(bundle.nodes, bundle.edges, progress, next));
+    setIsFormateur((prev) => !prev);
   };
 
   // Formateur — ajout de lien par drag
@@ -489,7 +481,7 @@ export default function SkillTreePanel() {
           }}
         >
           Arbre de compétences
-          {bundle.isOfficialReferential && (
+          {bundle.referential?.treeLabel && (
             <span
               style={{
                 marginLeft: '8px',
@@ -498,7 +490,7 @@ export default function SkillTreePanel() {
                 color: headerTextMuted,
               }}
             >
-              · REAC TSSR 2023
+              · {bundle.referential.treeLabel}
             </span>
           )}
         </span>
@@ -587,6 +579,7 @@ export default function SkillTreePanel() {
       {/* Canvas ReactFlow */}
       <div style={{ flex: 1, position: 'relative' }}>
         <ReactFlow
+          key={bundle.formationId}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
