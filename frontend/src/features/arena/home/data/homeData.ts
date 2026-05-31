@@ -102,7 +102,7 @@ function getFirstAvailableIncident(
   return toRecommendedIncident(
     bundle,
     pick,
-    firstLab ? 'Premier lab · prêt à démarrer' : 'Prêt à démarrer',
+    firstLab ? 'Premier ticket · prêt à démarrer' : 'Prêt à démarrer',
     'available',
     { isFirstLab: firstLab },
   );

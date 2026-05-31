@@ -103,6 +103,7 @@ function FocalResumeCard({ session }: { session: LastSession }) {
 
 function FocalRecommendedCard({ incident }: { incident: RecommendedIncident }) {
   const locked = incident.status === 'locked';
+  const ctaLabel = incident.isFirstLab ? 'Voir mes tickets' : 'Voir le ticket';
 
   return (
     <section className={`${styles.focal} ${styles.reveal} ${styles.d4}`}>
@@ -115,15 +116,22 @@ function FocalRecommendedCard({ incident }: { incident: RecommendedIncident }) {
       <div className={styles.focalMeta}>{incident.reason}</div>
       <div className={styles.focalFoot}>
         <span className={styles.pct}>{locked ? 'Prérequis manquants' : 'Prêt à démarrer'}</span>
-        <Link
-          to="/tickets/$incidentId"
-          params={{ incidentId: incident.ticketRouteId }}
-          className={styles.cta}
-          style={locked ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
-        >
-          Lancer le lab
-          <CtaArrow />
-        </Link>
+        {incident.isFirstLab ? (
+          <Link to="/tickets" className={styles.cta}>
+            {ctaLabel}
+            <CtaArrow />
+          </Link>
+        ) : (
+          <Link
+            to="/tickets/$incidentId"
+            params={{ incidentId: incident.ticketRouteId }}
+            className={styles.cta}
+            style={locked ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+          >
+            {ctaLabel}
+            <CtaArrow />
+          </Link>
+        )}
       </div>
     </section>
   );
@@ -146,9 +154,9 @@ function subtitleForState(
     case 'in-progress':
       return 'Une session t\u2019attend. Reprends là où tu t\u2019es arrêté.';
     case 'new':
-      return 'Ton premier lab est prêt. Lance une session pour découvrir comment Kyernal fonctionne.';
+      return 'Ton premier ticket t\u2019attend. Découvre comment Kyernal fonctionne.';
     case 'continue':
-      return 'Ton prochain lab est prêt. Lance une nouvelle session.';
+      return 'Ton prochain ticket est prêt.';
     case 'complete':
       return 'Tous tes labs sont complétés — explore tes compétences ou consulte ta boîte de réception.';
   }
