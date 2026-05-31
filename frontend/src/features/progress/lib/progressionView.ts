@@ -40,6 +40,8 @@ export function nodeStatusToTicketStatus(
       return 'en-cours';
     case 'completed':
       return 'resolu';
+    case 'locked':
+      return 'verrouille';
     default:
       return 'a-faire';
   }
@@ -95,8 +97,6 @@ export function getTicketStatusByRouteId(
   if (!node) return 'unknown';
 
   const nodeStatus = computeNodeStatus(node.id, bundle.progress, bundle.edges);
-  if (nodeStatus === 'locked') return 'unknown';
-
   return nodeStatusToTicketStatus(nodeStatus);
 }
 
@@ -110,8 +110,6 @@ export function getLearnerTickets(
     if (!node) return [];
 
     const nodeStatus = computeNodeStatus(node.id, progress, edges);
-    if (nodeStatus === 'locked') return [];
-
     return [{ ...ticket, status: nodeStatusToTicketStatus(nodeStatus) }];
   });
 }
@@ -131,7 +129,10 @@ function pickFirstAvailableIncident(
       .filter((n) => !edges.some((e) => e.target === n.id))
       .map((n) => n.id),
   );
-  const pick = available.find((n) => entryIds.has(n.id)) ?? available[0];
+  const pick =
+    available.find((n) => n.id === 'tssr-cp1') ??
+    available.find((n) => entryIds.has(n.id)) ??
+    available[0];
   const firstTicket = isNewLearner(progress);
 
   return toNextIncident(

@@ -37,6 +37,71 @@ export const TSSR_SKILL_NODES: SkillNode[] = [
     position: { x: 60, y: 220 },
   },
   {
+    id: 'tssr-cp1-pwd',
+    incidentId: 'INC-155',
+    title: 'Mot de passe expiré',
+    description:
+      'Réinitialisation AD, politique de mot de passe et vérification de la connexion.',
+    domain: 'linux',
+    level: 'novice',
+    xp: 60,
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    position: { x: 60, y: 80 },
+  },
+  {
+    id: 'tssr-cp1-print',
+    incidentId: 'INC-156',
+    title: 'Imprimante réseau',
+    description:
+      'File d’attente, pilote, spooler et test d’impression depuis le poste utilisateur.',
+    domain: 'linux',
+    level: 'novice',
+    xp: 55,
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    position: { x: 60, y: 360 },
+  },
+  {
+    id: 'tssr-cp1-vpn',
+    incidentId: 'INC-157',
+    title: 'VPN télétravail',
+    description:
+      'Client VPN, certificat, authentification MFA et connectivité distante.',
+    domain: 'linux',
+    level: 'novice',
+    xp: 65,
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    position: { x: 180, y: 140 },
+  },
+  {
+    id: 'tssr-cp1-share',
+    incidentId: 'INC-158',
+    title: 'Dossier partagé',
+    description:
+      'Droits NTFS, mappage réseau, chemins UNC et validation des accès.',
+    domain: 'linux',
+    level: 'novice',
+    xp: 55,
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    position: { x: 180, y: 300 },
+  },
+  {
+    id: 'tssr-cp1-slow',
+    incidentId: 'INC-159',
+    title: 'Poste lent',
+    description:
+      'Diagnostic rapide, processus gourmands, espace disque et redémarrage contrôlé.',
+    domain: 'linux',
+    level: 'novice',
+    xp: 50,
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    position: { x: 180, y: 220 },
+  },
+  {
     id: 'tssr-cp2',
     incidentId: 'INC-151',
     title: 'Windows & Active Directory',
@@ -163,6 +228,56 @@ export const TSSR_TICKETS: FormationTicket[] = [
     updatedAt: "Aujourd'hui",
   },
   {
+    id: 'INC-155',
+    incidentId: '155',
+    title: 'Mot de passe expiré — compte verrouillé',
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    priority: 'moyenne',
+    status: 'a-faire',
+    updatedAt: "Aujourd'hui",
+  },
+  {
+    id: 'INC-156',
+    incidentId: '156',
+    title: 'Imprimante réseau — file d’attente bloquée',
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    priority: 'basse',
+    status: 'a-faire',
+    updatedAt: "Aujourd'hui",
+  },
+  {
+    id: 'INC-157',
+    incidentId: '157',
+    title: 'Échec connexion VPN — télétravail',
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    priority: 'haute',
+    status: 'a-faire',
+    updatedAt: 'Il y a 2h',
+  },
+  {
+    id: 'INC-158',
+    incidentId: '158',
+    title: 'Accès refusé — dossier partagé comptabilité',
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    priority: 'moyenne',
+    status: 'a-faire',
+    updatedAt: 'Il y a 3h',
+  },
+  {
+    id: 'INC-159',
+    incidentId: '159',
+    title: 'Poste utilisateur très lent — service commercial',
+    competenceCode: 'CP1',
+    ccpCode: 'CCP1',
+    priority: 'basse',
+    status: 'a-faire',
+    updatedAt: 'Hier',
+  },
+  {
     id: 'INC-151',
     incidentId: '151',
     title: 'Échec d’authentification domaine Active Directory',
@@ -270,12 +385,21 @@ export const TSSR_MOCK_PROGRESS: LearnerProgress[] = [
   { nodeId: 'tssr-cp9', status: 'locked' },
 ];
 
+const TSSR_CANONICAL_NODE_BY_COMPETENCE: Partial<Record<string, string>> = {
+  CP1: 'tssr-cp1',
+};
+
 function isCompetenceValidated(
   competenceCode: string,
   nodes: SkillNode[],
   progress: LearnerProgress[],
   edges: SkillEdge[],
 ): boolean {
+  const canonicalId = TSSR_CANONICAL_NODE_BY_COMPETENCE[competenceCode];
+  if (canonicalId) {
+    return computeNodeStatus(canonicalId, progress, edges) === 'completed';
+  }
+
   const nodeIds = nodes
     .filter((node) => node.competenceCode === competenceCode)
     .map((node) => node.id);

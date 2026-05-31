@@ -91,6 +91,25 @@ const STATUS_CONFIG: Record<
       </svg>
     ),
   },
+  verrouille: {
+    label: 'Backlog',
+    color: '#52525b',
+    icon: (
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    ),
+  },
 };
 
 // --- PRIORITÉ CONFIG ---
@@ -301,6 +320,7 @@ function TicketRow({
   const [hovered, setHovered] = useState(false);
   const statusCfg = STATUS_CONFIG[ticket.status];
   const priorityCfg = PRIORITY_CONFIG[ticket.priority];
+  const isLocked = ticket.status === 'verrouille';
 
   return (
     <div
@@ -313,8 +333,9 @@ function TicketRow({
         gap: '10px',
         padding: '5px 16px 5px 32px',
         borderBottom: `1px solid ${border}`,
-        background: hovered ? hoverBg : 'transparent',
-        cursor: 'pointer',
+        background: hovered && !isLocked ? hoverBg : 'transparent',
+        cursor: isLocked ? 'not-allowed' : 'pointer',
+        opacity: isLocked ? 0.55 : 1,
         transition: 'background 0.1s',
       }}
     >
@@ -436,11 +457,13 @@ export default function MyTickets() {
   const grouped: Record<TicketStatus, FormationTicket[]> = {
     'en-cours': tickets.filter((t) => t.status === 'en-cours'),
     'a-faire': tickets.filter((t) => t.status === 'a-faire'),
+    verrouille: tickets.filter((t) => t.status === 'verrouille'),
     resolu: tickets.filter((t) => t.status === 'resolu'),
     annule: tickets.filter((t) => t.status === 'annule'),
   };
 
   const handleTicketClick = (ticket: FormationTicket) => {
+    if (ticket.status === 'verrouille') return;
     navigate({ href: `/tickets/${ticket.incidentId}` });
   };
 
@@ -480,7 +503,10 @@ export default function MyTickets() {
         >
           {
             tickets.filter(
-              (t) => t.status !== 'resolu' && t.status !== 'annule',
+              (t) =>
+                t.status !== 'resolu' &&
+                t.status !== 'annule' &&
+                t.status !== 'verrouille',
             ).length
           }{' '}
           actifs
@@ -564,6 +590,13 @@ export default function MyTickets() {
             <TicketGroup
               status="a-faire"
               tickets={grouped['a-faire']}
+              dark={dark}
+              showReferential={showReferential}
+              onTicketClick={handleTicketClick}
+            />
+            <TicketGroup
+              status="verrouille"
+              tickets={grouped.verrouille}
               dark={dark}
               showReferential={showReferential}
               onTicketClick={handleTicketClick}

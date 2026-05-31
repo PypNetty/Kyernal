@@ -58,6 +58,7 @@ export default function TicketPanel({
     ? getTicketStatusByRouteId(bundle, incidentId)
     : 'unknown';
   const isResolved = ticketStatus === 'resolu';
+  const isLocked = ticketStatus === 'verrouille';
   const isUnknown = ticketStatus === 'unknown';
 
   const border = dark ? '#1f1f1f' : '#e8e8e5';
@@ -95,6 +96,15 @@ export default function TicketPanel({
         >
           Ticket résolu
         </div>
+      );
+    }
+
+    if (isLocked) {
+      return (
+        <p style={{ fontSize: '12px', color: text2, margin: 0 }}>
+          Ce ticket est dans le backlog — termine les tickets précédents pour le
+          débloquer.
+        </p>
       );
     }
 

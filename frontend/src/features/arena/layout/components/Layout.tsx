@@ -4,6 +4,7 @@ import { useAuth } from '../../../auth';
 import { usePresenceSync } from '../../../auth/hooks/usePresenceSync';
 import {
   getLearnerProgress,
+  getTicketStatusByRouteId,
   markTicketResolved,
   markTicketStarted,
 } from '../../../progress';
@@ -272,12 +273,18 @@ export default function Layout() {
 
   const startSession = useCallback(
     async (incidentId: string) => {
+      const bundle = progressionBundle();
+      const ticketStatus = getTicketStatusByRouteId(bundle, incidentId);
+      if (ticketStatus === 'verrouille' || ticketStatus === 'unknown') {
+        return;
+      }
+
       if (session?.email && session.formationId) {
         markTicketStarted(
           session.email,
           session.formationId,
           incidentId,
-          progressionBundle(),
+          bundle,
         );
       }
 
