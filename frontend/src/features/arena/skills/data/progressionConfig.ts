@@ -1,6 +1,6 @@
 // ── progressionConfig.ts ─────────────────────────────────────────────────
-// Source unique de vérité pour la progression, les nœuds et les liens.
-// Importé par SkillTreePanel, CompetencePanel, MyTickets, DocsPanel.
+// Graphe de progression générique (fallback) + types et utilitaires partagés.
+// Les parcours dédiés (ex. TSSR) vivent dans des bundles via formationProgression.ts.
 
 export type NodeStatus = 'locked' | 'available' | 'in-progress' | 'completed';
 export type NodeLevel =

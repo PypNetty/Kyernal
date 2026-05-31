@@ -1,23 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useContext } from 'react';
 import { LayoutCtx } from '../../layout/components/Layout';
 import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
+import type { FormationTicket } from '../../skills/data/formationBundleTypes';
 
 // --- TYPES ---
-type TicketStatus = 'en-cours' | 'a-faire' | 'resolu' | 'annule';
-type TicketPriority = 'urgent' | 'haute' | 'moyenne' | 'basse';
-
-interface Ticket {
-  id: string;
-  incidentId: string;
-  title: string;
-  status: TicketStatus;
-  priority: TicketPriority;
-  competence: string;
-  updatedAt: string;
-  vmActive?: boolean;
-}
+type TicketStatus = FormationTicket['status'];
+type TicketPriority = FormationTicket['priority'];
 
 // --- STATUT CONFIG ---
 const STATUS_CONFIG: Record<
@@ -174,17 +164,28 @@ const PRIORITY_CONFIG: Record<
   },
 };
 
+function ticketCompetenceLabel(
+  ticket: FormationTicket,
+  showReferential: boolean,
+): string {
+  return showReferential
+    ? `${ticket.ccpCode} · ${ticket.competenceCode}`
+    : ticket.competenceCode;
+}
+
 // --- COMPOSANT GROUPE ---
 function TicketGroup({
   status,
   tickets,
   dark,
+  showReferential,
   onTicketClick,
 }: {
   status: TicketStatus;
-  tickets: Ticket[];
+  tickets: FormationTicket[];
   dark: boolean;
-  onTicketClick: (t: Ticket) => void;
+  showReferential: boolean;
+  onTicketClick: (t: FormationTicket) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const cfg = STATUS_CONFIG[status];
@@ -263,6 +264,7 @@ function TicketGroup({
           <TicketRow
             key={ticket.id}
             ticket={ticket}
+            competence={ticketCompetenceLabel(ticket, showReferential)}
             dark={dark}
             onClick={() => onTicketClick(ticket)}
             textMain={textMain}
@@ -278,6 +280,7 @@ function TicketGroup({
 // --- LIGNE TICKET ---
 function TicketRow({
   ticket,
+  competence,
   dark,
   onClick,
   textMain,
@@ -285,7 +288,8 @@ function TicketRow({
   border,
   hoverBg,
 }: {
-  ticket: Ticket;
+  ticket: FormationTicket;
+  competence: string;
   dark: boolean;
   onClick: () => void;
   textMain: string;
@@ -368,7 +372,7 @@ function TicketRow({
       </span>
 
       {/* VM active badge */}
-      {ticket.vmActive && (
+      {ticket.status === 'en-cours' && (
         <span
           style={{
             fontSize: '10px',
@@ -396,7 +400,7 @@ function TicketRow({
           flexShrink: 0,
         }}
       >
-        {ticket.competence}
+        {competence}
       </span>
 
       {/* Date */}
@@ -420,37 +424,22 @@ export default function MyTickets() {
   const { dark, startSession } = useContext(LayoutCtx);
   const navigate = useNavigate();
   const bundle = useFormationBundle();
-
-  const tickets: Ticket[] = useMemo(
-    () =>
-      bundle.tickets.map((t) => ({
-        id: t.id,
-        incidentId: t.incidentId,
-        title: t.title,
-        status: t.status,
-        priority: t.priority,
-        competence: bundle.referential
-          ? `${t.ccpCode} · ${t.competenceCode}`
-          : t.competenceCode,
-        updatedAt: t.updatedAt,
-        vmActive: t.status === 'en-cours',
-      })),
-    [bundle],
-  );
+  const showReferential = Boolean(bundle.referential);
+  const tickets = bundle.tickets;
 
   const border = dark ? '#1f1f1f' : '#e8e8e5';
   const bg = dark ? '#0e0f11' : '#f7f7f9';
   const textMain = dark ? '#ededed' : '#111113';
   const textMuted = dark ? '#8a8a93' : '#6b6b6b';
 
-  const grouped: Record<TicketStatus, Ticket[]> = {
+  const grouped: Record<TicketStatus, FormationTicket[]> = {
     'en-cours': tickets.filter((t) => t.status === 'en-cours'),
     'a-faire': tickets.filter((t) => t.status === 'a-faire'),
     resolu: tickets.filter((t) => t.status === 'resolu'),
     annule: tickets.filter((t) => t.status === 'annule'),
   };
 
-  const handleTicketClick = async (ticket: Ticket) => {
+  const handleTicketClick = async (ticket: FormationTicket) => {
     await startSession(ticket.incidentId);
     navigate({ href: `/tickets/${ticket.incidentId}` });
   };
@@ -555,24 +544,28 @@ export default function MyTickets() {
           status="en-cours"
           tickets={grouped['en-cours']}
           dark={dark}
+          showReferential={showReferential}
           onTicketClick={handleTicketClick}
         />
         <TicketGroup
           status="a-faire"
           tickets={grouped['a-faire']}
           dark={dark}
+          showReferential={showReferential}
           onTicketClick={handleTicketClick}
         />
         <TicketGroup
           status="resolu"
           tickets={grouped['resolu']}
           dark={dark}
+          showReferential={showReferential}
           onTicketClick={handleTicketClick}
         />
         <TicketGroup
           status="annule"
           tickets={grouped['annule']}
           dark={dark}
+          showReferential={showReferential}
           onTicketClick={handleTicketClick}
         />
       </div>

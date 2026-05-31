@@ -1,4 +1,5 @@
 import type { FormationProgressionBundle } from './formationBundleTypes';
+import { DEDICATED_FORMATION_IDS } from '../../../formations/registry';
 import { TSSR_PROGRESSION_BUNDLE } from './tssrProgression';
 import type { LearnerProgress, SkillEdge, SkillNode } from './progressionConfig';
 import {
@@ -38,7 +39,8 @@ function buildGenericBundle(): FormationProgressionBundle {
           id: n.id,
           code: n.domain,
           label: n.title,
-          validated: false,
+          validated:
+            MOCK_PROGRESS.find((p) => p.nodeId === n.id)?.status === 'completed',
           ticketIds: n.incidentId ? [n.incidentId] : [],
         })),
       },
@@ -53,13 +55,10 @@ const BY_FORMATION: Record<string, FormationProgressionBundle> = {
   tssr: TSSR_PROGRESSION_BUNDLE,
 };
 
-/** Formations avec un bundle REAC / dédié prêt pour l’Arena. */
-export const FORMATIONS_WITH_PROGRESSION = new Set(
-  Object.keys(BY_FORMATION),
-);
-
-export function hasDedicatedProgression(formationId?: string | null): boolean {
-  return Boolean(formationId && FORMATIONS_WITH_PROGRESSION.has(formationId));
+for (const formationId of DEDICATED_FORMATION_IDS) {
+  if (!BY_FORMATION[formationId]) {
+    throw new Error(`Missing progression bundle for formation: ${formationId}`);
+  }
 }
 
 export function getFormationProgression(

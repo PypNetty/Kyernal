@@ -1,10 +1,9 @@
-import type { TssrCompetenceCode } from '../../../auth/data/tssrReferential';
 import {
   TSSR_CCPS,
-  TSSR_COMPETENCES,
   TSSR_COMPETENCES_TRANSVERSALES,
   TSSR_REFERENTIAL_META,
-} from '../../../auth/data/tssrReferential';
+  getTssrCompetenceByNumber,
+} from '../../../formations/data/tssrReferential';
 import type {
   FormationCcp,
   FormationProgressionBundle,
@@ -242,16 +241,6 @@ export const TSSR_TICKETS: FormationTicket[] = [
     status: 'a-faire',
     updatedAt: 'Mar',
   },
-  {
-    id: 'INC-042',
-    incidentId: '042',
-    title: 'Apache ne répond plus (exploitation Linux)',
-    competenceCode: 'CP3',
-    ccpCode: 'CCP1',
-    priority: 'urgent',
-    status: 'en-cours',
-    updatedAt: "À l'instant",
-  },
 ];
 
 export const TSSR_MOCK_PROGRESS: LearnerProgress[] = [
@@ -280,7 +269,25 @@ export const TSSR_MOCK_PROGRESS: LearnerProgress[] = [
   { nodeId: 'tssr-cp9', status: 'locked' },
 ];
 
-function buildFormationCcps(): FormationCcp[] {
+function isCompetenceValidated(
+  competenceCode: string,
+  nodes: SkillNode[],
+  progress: LearnerProgress[],
+): boolean {
+  const nodeIds = nodes
+    .filter((node) => node.competenceCode === competenceCode)
+    .map((node) => node.id);
+
+  return nodeIds.some(
+    (nodeId) =>
+      progress.find((entry) => entry.nodeId === nodeId)?.status === 'completed',
+  );
+}
+
+function buildFormationCcps(
+  nodes: SkillNode[],
+  progress: LearnerProgress[],
+): FormationCcp[] {
   return TSSR_CCPS.map((ccp) => ({
     id: ccp.code.toLowerCase(),
     code: ccp.code,
@@ -288,20 +295,23 @@ function buildFormationCcps(): FormationCcp[] {
     description: ccp.description,
     color: CCP_COLORS[ccp.code],
     competences: ccp.competenceNumbers.map((num) => {
-      const ref = TSSR_COMPETENCES.find((c) => c.number === num)!;
+      const ref = getTssrCompetenceByNumber(num);
       const tickets = TSSR_TICKETS.filter((t) => t.competenceCode === ref.code);
       return {
         id: ref.code.toLowerCase(),
         code: ref.code,
         label: ref.label,
-        validated: num <= 1,
+        validated: isCompetenceValidated(ref.code, nodes, progress),
         ticketIds: tickets.map((t) => t.id),
       };
     }),
   }));
 }
 
-export const TSSR_FORMATION_CCPS = buildFormationCcps();
+export const TSSR_FORMATION_CCPS = buildFormationCcps(
+  TSSR_SKILL_NODES,
+  TSSR_MOCK_PROGRESS,
+);
 
 export const TSSR_PROGRESSION_BUNDLE: FormationProgressionBundle = {
   formationId: 'tssr',
