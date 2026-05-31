@@ -21,7 +21,7 @@ export interface SkillNode {
   level: NodeLevel;
   xp: number; // XP gagnés à la résolution
   badge?: string; // badge débloqué si présent
-  docsId?: string; // lien vers une fiche DocsPanel
+  docsId?: string; // lien /ressources?tab=docs&doc=…
   position: { x: number; y: number }; // position sur le canvas
   /** Référentiel TSSR (CP1–CP9) */
   competenceCode?: string;

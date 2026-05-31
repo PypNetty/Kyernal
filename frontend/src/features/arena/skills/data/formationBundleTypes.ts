@@ -21,6 +21,7 @@ export interface FormationTicket {
   updatedAt: string;
   description?: string;
   objectives?: TicketObjective[];
+  resourceIds?: string[];
 }
 
 export interface FormationCompetenceItem {

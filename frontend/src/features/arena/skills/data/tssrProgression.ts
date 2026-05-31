@@ -233,6 +233,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'haute',
     status: 'a-faire',
     updatedAt: "Aujourd'hui",
+    resourceIds: ['7', '16'],
   },
   {
     id: 'INC-155',
@@ -250,6 +251,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'moyenne',
     status: 'a-faire',
     updatedAt: "Aujourd'hui",
+    resourceIds: ['7', '16'],
   },
   {
     id: 'INC-156',
@@ -267,6 +269,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'basse',
     status: 'a-faire',
     updatedAt: "Aujourd'hui",
+    resourceIds: ['1', '2', '16'],
   },
   {
     id: 'INC-157',
@@ -284,6 +287,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'haute',
     status: 'a-faire',
     updatedAt: 'Il y a 2h',
+    resourceIds: ['7', '8', '16'],
   },
   {
     id: 'INC-158',
@@ -301,6 +305,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'moyenne',
     status: 'a-faire',
     updatedAt: 'Il y a 3h',
+    resourceIds: ['7', '16'],
   },
   {
     id: 'INC-159',
@@ -318,6 +323,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'basse',
     status: 'a-faire',
     updatedAt: 'Hier',
+    resourceIds: ['1', '2', '4', '16'],
   },
   {
     id: 'INC-151',
@@ -335,6 +341,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'urgent',
     status: 'a-faire',
     updatedAt: "Aujourd'hui",
+    resourceIds: ['6', '7', '9', '16'],
   },
   {
     id: 'INC-021',
@@ -352,6 +359,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'haute',
     status: 'en-cours',
     updatedAt: 'Il y a 1h',
+    resourceIds: ['1', '2', '14', '16'],
   },
   {
     id: 'INC-088',
@@ -369,6 +377,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'moyenne',
     status: 'en-cours',
     updatedAt: 'Il y a 2h',
+    resourceIds: ['6', '7', '9', '16'],
   },
   {
     id: 'INC-152',
@@ -386,6 +395,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'urgent',
     status: 'a-faire',
     updatedAt: 'Hier',
+    resourceIds: ['1', '2', '4', '17'],
   },
   {
     id: 'INC-115',
@@ -403,6 +413,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'moyenne',
     status: 'a-faire',
     updatedAt: 'Hier',
+    resourceIds: ['1', '2', '18', '17'],
   },
   {
     id: 'INC-095',
@@ -420,6 +431,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'haute',
     status: 'a-faire',
     updatedAt: 'Lun',
+    resourceIds: ['7', '8', '17'],
   },
   {
     id: 'INC-153',
@@ -437,6 +449,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'urgent',
     status: 'a-faire',
     updatedAt: 'Lun',
+    resourceIds: ['4', '1', '17'],
   },
   {
     id: 'INC-154',
@@ -454,6 +467,7 @@ export const TSSR_TICKETS: FormationTicket[] = [
     priority: 'moyenne',
     status: 'a-faire',
     updatedAt: 'Mar',
+    resourceIds: ['10', '12', '17'],
   },
 ];
 

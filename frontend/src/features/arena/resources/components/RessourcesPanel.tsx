@@ -1,203 +1,330 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { LayoutCtx } from '../../layout/components/Layout';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
 import {
   ALL_CCPS,
-  APPRENANT_CCPS,
   CATEGORY_LABELS,
   MOCK_RESOURCES,
   type Resource,
-  type ResourceType,
 } from '../data/resourcesData';
+import type {
+  ResourcesNavigate,
+  ResourcesSearch,
+} from '../lib/resourcesSearch';
+import { getLearnerActiveCcps } from '../lib/getLearnerActiveCcps';
+import { getResourcesForActiveTickets } from '../lib/getTicketResources';
+import {
+  openResourceUrl,
+  readResourceViews,
+  trackResourceView,
+} from '../lib/trackResourceView';
+import { RESOURCE_TYPE_CONFIG } from '../resourcesUi';
+import ResourceDetail from './ResourceDetail';
+import styles from './Ressources.module.css';
 
-const TYPE_CONFIG: Record<ResourceType, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  doc: { label: 'Doc', color: '#4d8fff', bg: 'rgba(0,85,229,0.1)', icon: <span>📄</span> },
-  man: { label: 'Man', color: '#22d3ee', bg: 'rgba(34,211,238,0.1)', icon: <span>⌨</span> },
-  cours: { label: 'Cours', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', icon: <span>🎓</span> },
-  cheatsheet: { label: 'Cheatsheet', color: '#30a46c', bg: 'rgba(48,164,108,0.1)', icon: <span>📝</span> },
-  video: { label: 'Vidéo', color: '#f97316', bg: 'rgba(249,115,22,0.1)', icon: <span>▶</span> },
-};
+const PRIMARY_FILTERS = [
+  ['active-tickets', 'Pour mes tickets'],
+  ['mes-ccps', 'Mes CCP'],
+  ['all', 'Tout'],
+] as const;
 
-function ResourceCard({
-  r,
-  dark,
-  textMain,
-  textMuted,
-  cardBorder,
-  onOpen,
-  views,
-}: {
-  r: Resource;
-  dark: boolean;
-  textMain: string;
-  textMuted: string;
-  cardBorder: string;
-  onOpen: (r: Resource) => void;
-  views: number;
-}) {
-  const [hovered, setHovered] = useState(false);
-  const typeCfg = TYPE_CONFIG[r.type];
-  const isComingSoon = r.type === 'cours' && !r.url;
-  const isRelevant = r.ccps.some((c) => APPRENANT_CCPS.includes(c));
+const DEFAULT_FILTER = 'active-tickets';
 
-  return (
-    <div
-      onClick={() => !isComingSoon && onOpen(r)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        padding: '12px 14px',
-        borderRadius: '7px',
-        border: `1px solid ${hovered && !isComingSoon ? (dark ? '#ffffff22' : '#00000020') : isRelevant ? (dark ? '#ffffff14' : '#00000010') : cardBorder}`,
-        background: isRelevant ? (dark ? '#13141a' : '#fafffe') : dark ? '#111113' : '#ffffff',
-        cursor: isComingSoon ? 'default' : 'pointer',
-        transition: 'border 0.1s, transform 0.1s',
-        opacity: isComingSoon ? 0.55 : 1,
-        transform: hovered && !isComingSoon ? 'translateY(-1px)' : 'none',
-        position: 'relative',
-      }}
-    >
-      {isRelevant && (
-        <div style={{ position: 'absolute', top: 0, right: 0, display: 'flex', gap: '2px', padding: '4px 8px' }}>
-          {r.ccps.filter((c) => APPRENANT_CCPS.includes(c)).map((c) => (
-            <span key={c} style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '3px', background: 'rgba(0,85,229,0.15)', color: '#4d8fff', fontWeight: 700 }}>
-              {c}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', paddingRight: isRelevant ? '40px' : '0' }}>
-        <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: typeCfg.bg, color: typeCfg.color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {typeCfg.icon} {typeCfg.label}
-        </span>
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {views > 0 && <span style={{ fontSize: '10px', color: textMuted }}>👁 {views}</span>}
-          {isComingSoon && <span style={{ fontSize: '10px', color: textMuted }}>🔒 Bientôt</span>}
-          {!isComingSoon && hovered && <span style={{ color: textMuted }}>↗</span>}
-        </span>
-      </div>
-
-      <div style={{ fontSize: '13px', fontWeight: 600, color: textMain, marginBottom: '4px' }}>{r.title}</div>
-      <div style={{ fontSize: '12px', color: textMuted, lineHeight: 1.5, marginBottom: '8px' }}>{r.description}</div>
-      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-        {r.tags.map((tag) => (
-          <span key={tag} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: dark ? '#ffffff08' : '#0000000a', color: textMuted }}>
-            {tag}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
+function pickDefaultId(
+  resources: Resource[],
+  preferredIds: Set<string>,
+): string {
+  const preferred = resources.find((r) => preferredIds.has(r.id));
+  return preferred?.id ?? resources[0]?.id ?? '';
 }
 
-export default function RessourcesPanel() {
-  const { dark } = useContext(LayoutCtx);
-  const [ccpFilter, setCcpFilter] = useState<string>('mes-ccps');
-  const [search, setSearch] = useState('');
-  const [views, setViews] = useState<Record<string, number>>({});
+function isCcpFilter(value: string): boolean {
+  return ALL_CCPS.includes(value as (typeof ALL_CCPS)[number]);
+}
+
+export default function RessourcesPanel({
+  search,
+  navigate,
+}: {
+  search: Pick<ResourcesSearch, 'r' | 'filter'>;
+  navigate: ResourcesNavigate;
+}) {
+  const bundle = useFormationBundle();
+
+  const activeCcps = useMemo(() => getLearnerActiveCcps(bundle), [bundle]);
+  const activeTicketResources = useMemo(
+    () => getResourcesForActiveTickets(bundle, MOCK_RESOURCES),
+    [bundle],
+  );
+  const activeTicketResourceIds = useMemo(
+    () => new Set(activeTicketResources.map((r) => r.id)),
+    [activeTicketResources],
+  );
+
+  const filter = search.filter ?? DEFAULT_FILTER;
+  const [query, setQuery] = useState('');
+  const [views, setViews] = useState(readResourceViews);
+  const [mobileDetail, setMobileDetail] = useState(false);
+
+  const urlSelectedId = search.r ?? '';
+
+  const setFilter = useCallback(
+    (next: string) => {
+      void navigate({
+        search: (prev: ResourcesSearch) => ({
+          ...prev,
+          tab: 'catalog',
+          filter: next,
+          r: undefined,
+        }),
+      });
+      setMobileDetail(false);
+    },
+    [navigate],
+  );
+
+  const setSelectedId = useCallback(
+    (id: string) => {
+      void navigate({
+        search: (prev: ResourcesSearch) => ({
+          ...prev,
+          tab: 'catalog',
+          r: id || undefined,
+        }),
+      });
+      if (id) setMobileDetail(true);
+    },
+    [navigate],
+  );
+
+  const filtered = useMemo(() => {
+    const list = MOCK_RESOURCES.filter((r) => {
+      const matchFilter =
+        filter === 'all'
+          ? true
+          : filter === 'active-tickets'
+            ? activeTicketResourceIds.has(r.id)
+            : filter === 'mes-ccps'
+              ? activeCcps.length > 0 &&
+                r.ccps.some((c) => activeCcps.includes(c))
+              : r.ccps.includes(filter);
+      const matchSearch =
+        query === '' ||
+        r.title.toLowerCase().includes(query.toLowerCase()) ||
+        r.tags.some((t) => t.toLowerCase().includes(query.toLowerCase()));
+      return matchFilter && matchSearch;
+    });
+
+    return [...list].sort((a, b) => {
+      const aRel = activeTicketResourceIds.has(a.id) ? 1 : 0;
+      const bRel = activeTicketResourceIds.has(b.id) ? 1 : 0;
+      if (bRel !== aRel) return bRel - aRel;
+      return (views[b.id] ?? 0) - (views[a.id] ?? 0);
+    });
+  }, [filter, query, activeCcps, activeTicketResourceIds, views]);
+
+  const grouped = useMemo(() => {
+    return filtered.reduce<Record<string, Resource[]>>((acc, r) => {
+      const key = CATEGORY_LABELS[r.category];
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(r);
+      return acc;
+    }, {});
+  }, [filtered]);
+
+  const displayId = useMemo(() => {
+    if (urlSelectedId && filtered.some((r) => r.id === urlSelectedId)) {
+      return urlSelectedId;
+    }
+    if (filtered.length === 0) return '';
+    return pickDefaultId(filtered, activeTicketResourceIds);
+  }, [urlSelectedId, filtered, activeTicketResourceIds]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('klixy_resource_views');
-      if (saved) setViews(JSON.parse(saved));
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
+    if (displayId === urlSelectedId) return;
+    void navigate({
+      search: (prev: ResourcesSearch) => ({
+        ...prev,
+        tab: 'catalog',
+        r: displayId || undefined,
+      }),
+    });
+  }, [displayId, urlSelectedId, navigate]);
+
+  const selected = filtered.find((r) => r.id === displayId) ?? null;
 
   const handleOpen = (r: Resource) => {
     if (!r.url) return;
-    const updated = { ...views, [r.id]: (views[r.id] ?? 0) + 1 };
-    setViews(updated);
-    try {
-      localStorage.setItem('klixy_resource_views', JSON.stringify(updated));
-    } catch {
-      // ignore storage errors
-    }
-    window.open(r.url, '_blank');
+    setViews((prev) => trackResourceView(r.id, prev));
+    openResourceUrl(r.url);
   };
 
-  const border = dark ? '#1f1f1f' : '#e8e8e5';
-  const bg = dark ? '#0e0f11' : '#f7f7f9';
-  const textMain = dark ? '#ededed' : '#111113';
-  const textMuted = dark ? '#8a8a93' : '#6b6b6b';
-  const inputBg = dark ? '#17181a' : '#f0f0ee';
-  const cardBorder = dark ? '#27282b' : '#e8e8e5';
+  const mesCcpsLabel =
+    activeCcps.length > 0 ? `Mes CCP (${activeCcps.join(', ')})` : 'Mes CCP';
 
-  const filtered = MOCK_RESOURCES.filter((r) => {
-    const matchCcp =
-      ccpFilter === 'all'
-        ? true
-        : ccpFilter === 'mes-ccps'
-          ? r.ccps.some((c) => APPRENANT_CCPS.includes(c))
-          : r.ccps.includes(ccpFilter);
-    const matchSearch =
-      search === '' ||
-      r.title.toLowerCase().includes(search.toLowerCase()) ||
-      r.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
-    return matchCcp && matchSearch;
-  });
+  const ccpSelectValue = isCcpFilter(filter) ? filter : '';
 
-  const sorted = [...filtered].sort((a, b) => {
-    const aRel = a.ccps.some((c) => APPRENANT_CCPS.includes(c)) ? 1 : 0;
-    const bRel = b.ccps.some((c) => APPRENANT_CCPS.includes(c)) ? 1 : 0;
-    if (bRel !== aRel) return bRel - aRel;
-    return (views[b.id] ?? 0) - (views[a.id] ?? 0);
-  });
+  const filterOptions = PRIMARY_FILTERS.map(([val, label]) =>
+    val === 'mes-ccps' ? ([val, mesCcpsLabel] as const) : ([val, label] as const),
+  );
 
-  const grouped = sorted.reduce<Record<string, Resource[]>>((acc, r) => {
-    const key = CATEGORY_LABELS[r.category];
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(r);
-    return acc;
-  }, {});
+  const panelClass =
+    mobileDetail && selected
+      ? `${styles.panel} ${styles.panelMobileDetail}`
+      : styles.panel;
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: bg, fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif' }}>
-      <div style={{ height: '48px', display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: `1px solid ${border}`, gap: '10px', flexShrink: 0 }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: textMain }}>Ressources</span>
-        <span style={{ fontSize: '11px', color: textMuted, background: dark ? '#ffffff0f' : '#0000000a', padding: '1px 7px', borderRadius: '10px' }}>{filtered.length}</span>
-        <div style={{ marginLeft: 'auto', position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <span style={{ position: 'absolute', left: '8px', color: textMuted }}>⌕</span>
+    <div className={panelClass}>
+      <aside className={styles.listPane}>
+        <div className={styles.listHeader}>
+          <span className={styles.listTitle}>Catalogue</span>
+          <span className={styles.countBadge}>{filtered.length}</span>
+        </div>
+
+        <div className={styles.searchWrap}>
+          <span className={styles.searchIcon} aria-hidden>
+            ⌕
+          </span>
           <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher..."
-            style={{ paddingLeft: '26px', paddingRight: '10px', height: '28px', borderRadius: '6px', border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: '12px', outline: 'none', width: '180px' }}
+            className={styles.searchInput}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher une doc, un tag…"
           />
         </div>
-      </div>
 
-      <div style={{ display: 'flex', gap: '4px', padding: '8px 20px', borderBottom: `1px solid ${border}`, flexShrink: 0 }}>
-        {([['mes-ccps', `Mes CCP (${APPRENANT_CCPS.join(', ')})`], ['all', 'Tout'], ...ALL_CCPS.map((c) => [c, c])] as [string, string][]).map(([val, label]) => (
-          <button
-            key={val}
-            onClick={() => setCcpFilter(val)}
-            style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 500, borderRadius: '5px', border: 'none', cursor: 'pointer', flexShrink: 0, background: ccpFilter === val ? (dark ? '#ffffff18' : '#00000012') : 'transparent', color: ccpFilter === val ? textMain : textMuted, transition: 'background 0.1s' }}
+        <div className={styles.filterRow}>
+          {filterOptions.map(([val, label]) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => setFilter(val)}
+              className={`${styles.filterChip} ${
+                filter === val ? styles.filterChipActive : styles.filterChipIdle
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          <select
+            className={styles.ccpSelect}
+            value={ccpSelectValue}
+            aria-label="Filtrer par CCP"
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) setFilter(v);
+            }}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            <option value="">CCP…</option>
+            {ALL_CCPS.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-        {Object.entries(grouped).map(([cat, items]) => (
-          <div key={cat} style={{ marginBottom: '24px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: textMuted, letterSpacing: '0.5px', marginBottom: '10px' }}>{cat.toUpperCase()}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '8px' }}>
-              {items.map((r) => (
-                <ResourceCard key={r.id} r={r} dark={dark} textMain={textMain} textMuted={textMuted} cardBorder={cardBorder} onOpen={handleOpen} views={views[r.id] ?? 0} />
-              ))}
+        <div className={styles.listScroll}>
+          {filtered.length === 0 && (
+            <div className={styles.emptyList}>
+              {filter === 'active-tickets' ? (
+                <>
+                  <p className={styles.emptyTitle}>
+                    Aucune ressource liée à tes tickets actifs
+                  </p>
+                  <p className={styles.emptyHint}>
+                    Ouvre un ticket en cours ou explore tout le catalogue.
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.emptyAction}
+                    onClick={() => setFilter('all')}
+                  >
+                    Voir tout le catalogue
+                  </button>
+                </>
+              ) : (
+                'Aucune ressource trouvée'
+              )}
             </div>
-          </div>
-        ))}
+          )}
+          {Object.entries(grouped).map(([category, items]) => (
+            <div key={category}>
+              <div className={styles.sectionLabel}>{category}</div>
+              {items.map((resource) => {
+                const isActive = resource.id === displayId;
+                const isRelevant = activeTicketResourceIds.has(resource.id);
+                const typeCfg = RESOURCE_TYPE_CONFIG[resource.type];
 
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', color: textMuted, fontSize: '13px', paddingTop: '40px' }}>
-            Aucune ressource trouvée
+                return (
+                  <div
+                    key={resource.id}
+                    role="button"
+                    tabIndex={0}
+                    className={`${styles.row} ${
+                      isActive ? styles.rowActive : ''
+                    } ${isRelevant ? styles.rowRelevant : ''}`}
+                    onClick={() => setSelectedId(resource.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedId(resource.id);
+                      }
+                    }}
+                  >
+                    <div className={styles.rowTop}>
+                      <span
+                        className={styles.typePill}
+                        style={{
+                          color: typeCfg.color,
+                          background: typeCfg.bg,
+                        }}
+                      >
+                        {typeCfg.label}
+                      </span>
+                      {(views[resource.id] ?? 0) > 0 && (
+                        <span className={styles.rowMeta}>
+                          {views[resource.id]}×
+                        </span>
+                      )}
+                    </div>
+                    <div className={styles.rowTitle}>{resource.title}</div>
+                    <div className={styles.rowPreview}>
+                      {resource.description}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      <main className={styles.detailPane}>
+        {selected ? (
+          <>
+            <button
+              type="button"
+              className={styles.mobileBack}
+              onClick={() => setMobileDetail(false)}
+            >
+              ← Liste
+            </button>
+            <div className={styles.detailScroll}>
+              <ResourceDetail
+                resource={selected}
+                views={views[selected.id] ?? 0}
+                isRelevant={activeTicketResourceIds.has(selected.id)}
+                activeCcps={activeCcps}
+                onOpen={handleOpen}
+              />
+            </div>
+          </>
+        ) : (
+          <div className={styles.detailEmpty}>
+            Sélectionne une ressource dans la liste
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
