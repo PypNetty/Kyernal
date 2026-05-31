@@ -18,7 +18,8 @@ import ActivitePanel from './activity/components/ActivitePanel';
 import { ProjetsPanel } from './projects';
 import StatistiquesPanel from './stats/components/StatistiquesPanel';
 import SkillTreePanel from './skills/components/SkillTreePanel';
-import { DocsPanel } from './docs';
+import { RessourcesShell } from './resources';
+import { validateResourcesSearch } from './resources/lib/resourcesSearch';
 import TicketPanel from './tickets/components/TicketPanel';
 import TerminalPanel from './tickets/components/TerminalPanel';
 import {
@@ -149,7 +150,9 @@ function ProjetsPage() {
   return <ProjetsPanel />;
 }
 function RessourcePage() {
-  return <DocsPanel />;
+  const search = docsRoute.useSearch();
+  const navigate = docsRoute.useNavigate();
+  return <RessourcesShell search={search} navigate={navigate} />;
 }
 function StatistiquePage() {
   return <StatistiquesPanel />;
@@ -334,8 +337,11 @@ const projectsRoute = createRoute({
 const docsRoute = createRoute({
   getParentRoute: () => arenaLayoutRoute,
   path: '/ressources',
+  validateSearch: validateResourcesSearch,
   component: RessourcePage,
 });
+
+export { docsRoute };
 const insightsRoute = createRoute({
   getParentRoute: () => arenaLayoutRoute,
   path: '/statistiques',

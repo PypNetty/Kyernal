@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from '@tanstack/react-router';
 import type { TicketTheme } from '../../tickets/ticketUi';
 import type { Resource, ResourceType } from '../data/resourcesData';
 
@@ -122,6 +123,24 @@ export default function TicketResourcesList({
           );
         })}
       </ul>
+      <Link
+        to="/ressources"
+        search={{
+          tab: 'catalog',
+          filter: 'active-tickets',
+          ...(resources[0] ? { r: resources[0].id } : {}),
+        }}
+        style={{
+          display: 'inline-block',
+          marginTop: '12px',
+          fontSize: '12px',
+          fontWeight: 500,
+          color: '#4d8fff',
+          textDecoration: 'none',
+        }}
+      >
+        Voir tout dans Ressources →
+      </Link>
     </div>
   );
 }

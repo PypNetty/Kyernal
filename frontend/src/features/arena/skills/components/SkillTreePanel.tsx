@@ -1,4 +1,12 @@
 import React, { useState, useCallback, useContext, useEffect } from 'react';
+import { Link } from '@tanstack/react-router';
+import {
+  catalogSearch,
+  docPageTitle,
+  docsSearch,
+  getResourcesForTicket,
+  MOCK_RESOURCES,
+} from '../../resources';
 import { useFormationBundle } from '../hooks/useFormationBundle';
 import ReactFlow, {
   Node,
@@ -632,6 +640,16 @@ export default function SkillTreePanel() {
               );
               if (!node) return null;
               const color = DOMAIN_COLORS[node.domain];
+              const linkedTicket = node.incidentId
+                ? bundle.tickets.find((t) => t.incidentId === node.incidentId)
+                : undefined;
+              const ticketResources = linkedTicket
+                ? getResourcesForTicket(linkedTicket, MOCK_RESOURCES)
+                : [];
+              const primaryResourceId = ticketResources[0]?.id;
+              const docLabel = node.docsId
+                ? docPageTitle(node.docsId)
+                : null;
               return (
                 <Panel position="top-right">
                   <div
@@ -739,6 +757,51 @@ export default function SkillTreePanel() {
                         </span>
                       )}
                     </div>
+                    {(node.docsId || primaryResourceId) && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                          marginBottom: '12px',
+                        }}
+                      >
+                        {node.docsId && docLabel && (
+                          <Link
+                            to="/ressources"
+                            search={docsSearch(node.docsId)}
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 500,
+                              color: '#4d8fff',
+                              textDecoration: 'none',
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            Fiche : {docLabel} →
+                          </Link>
+                        )}
+                        {primaryResourceId && (
+                          <Link
+                            to="/ressources"
+                            search={catalogSearch(primaryResourceId)}
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 500,
+                              color: '#4d8fff',
+                              textDecoration: 'none',
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            Ressources du lab
+                            {ticketResources.length > 1
+                              ? ` (${ticketResources.length})`
+                              : ''}{' '}
+                            →
+                          </Link>
+                        )}
+                      </div>
+                    )}
                     {status === 'available' && (
                       <button
                         style={{
