@@ -2,7 +2,8 @@ import { Link } from '@tanstack/react-router';
 import { useAuth } from '../../../auth';
 import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
 import {
-  AUTONOMY_SCORE,
+  computeAutonomyScore,
+  getHomeLearnerState,
   getLastSession,
   getProgressSnapshot,
   getRecommendedIncident,
@@ -51,10 +52,19 @@ function FocalResumeCard({ session }: { session: LastSession }) {
       ? '1 indice utilisé'
       : `${session.hintsUsed} indices utilisés`;
 
+  const footMeta =
+    session.progressPercent != null
+      ? `${session.progressPercent}\u00a0%\u00a0·\u00a0${hintLabel}`
+      : hintLabel;
+
   return (
     <section
       className={`${styles.focal} ${styles.reveal} ${styles.d4}`}
-      style={{ ['--progress-pct' as string]: `${session.progressPercent}%` }}
+      style={
+        session.progressPercent != null
+          ? { ['--progress-pct' as string]: `${session.progressPercent}%` }
+          : undefined
+      }
     >
       <div className={styles.focalTop}>
         <span className={styles.tag}>
@@ -68,14 +78,16 @@ function FocalResumeCard({ session }: { session: LastSession }) {
         )}
       </div>
       <h2 className={styles.focalTitle}>{session.title}</h2>
-      <div className={styles.focalMeta}>Dernière activité · {session.lastActive}</div>
-      <div className={styles.bar}>
-        <span className={styles.barFill} />
-      </div>
+      {session.lastActive && (
+        <div className={styles.focalMeta}>Dernière activité · {session.lastActive}</div>
+      )}
+      {session.progressPercent != null && (
+        <div className={styles.bar}>
+          <span className={styles.barFill} />
+        </div>
+      )}
       <div className={styles.focalFoot}>
-        <span className={styles.pct}>
-          {session.progressPercent}&nbsp;%&nbsp;·&nbsp;{hintLabel}
-        </span>
+        <span className={styles.pct}>{footMeta}</span>
         <Link
           to="/tickets/$incidentId"
           params={{ incidentId: session.ticketRouteId }}
@@ -117,12 +129,39 @@ function FocalRecommendedCard({ incident }: { incident: RecommendedIncident }) {
   );
 }
 
+function greetingHeading(firstName: string, isWelcome: boolean) {
+  return (
+    <>
+      {isWelcome ? 'Bienvenue,' : 'Bon retour,'}
+      <br />
+      <em className={styles.greetingEm}>{firstName}.</em>
+    </>
+  );
+}
+
+function subtitleForState(
+  state: ReturnType<typeof getHomeLearnerState>,
+): string {
+  switch (state) {
+    case 'in-progress':
+      return 'Une session t\u2019attend. Reprends là où tu t\u2019es arrêté.';
+    case 'new':
+      return 'Ton premier lab est prêt. Lance une session pour découvrir comment Kyernal fonctionne.';
+    case 'continue':
+      return 'Ton prochain lab est prêt. Lance une nouvelle session.';
+    case 'complete':
+      return 'Tous tes labs sont complétés — explore tes compétences ou consulte ta boîte de réception.';
+  }
+}
+
 export default function HomePanel() {
   const { data: session } = useAuth();
   const bundle = useFormationBundle();
   const lastSession = getLastSession(bundle);
   const recommended = getRecommendedIncident(bundle);
   const snapshot = getProgressSnapshot(bundle);
+  const learnerState = getHomeLearnerState(lastSession, recommended);
+  const autonomyScore = computeAutonomyScore(bundle.mockProgress);
 
   const firstName = session?.user?.name?.split(' ')[0] ?? 'Apprenant';
   const xpPercent = Math.min(
@@ -142,16 +181,10 @@ export default function HomePanel() {
       </p>
 
       <h1 className={`${styles.greeting} ${styles.reveal} ${styles.d2}`}>
-        Bon retour,
-        <br />
-        <em className={styles.greetingEm}>{firstName}.</em>
+        {greetingHeading(firstName, learnerState === 'new')}
       </h1>
       <p className={`${styles.sub} ${styles.reveal} ${styles.d3}`}>
-        {lastSession
-          ? 'Une session t\u2019attend. Reprends là où tu t\u2019es arrêté.'
-          : recommended
-            ? 'Ton prochain lab est prêt. Lance une nouvelle session.'
-            : 'Aucune session en cours pour le moment.'}
+        {subtitleForState(learnerState)}
       </p>
 
       {lastSession ? (
@@ -186,9 +219,11 @@ export default function HomePanel() {
         <span className={styles.xp}>
           {snapshot.xpInLevel} / {snapshot.xpToNext} XP
         </span>
-        <span className={styles.auto}>
-          Autonomie <b>{AUTONOMY_SCORE}</b>
-        </span>
+        {autonomyScore != null && (
+          <span className={styles.auto}>
+            Autonomie <b>{autonomyScore}</b>
+          </span>
+        )}
       </div>
 
       <nav className={`${styles.quietNav} ${styles.reveal} ${styles.d6}`}>
@@ -205,6 +240,13 @@ export default function HomePanel() {
           Ressources
         </Link>
       </nav>
+
+      <p className={`${styles.workspaceLink} ${styles.reveal} ${styles.d6}`}>
+        <Link to="/inbox" className={styles.workspaceLinkAnchor}>
+          Ouvrir l&apos;espace de travail
+          <CtaArrow />
+        </Link>
+      </p>
     </main>
   );
 }
