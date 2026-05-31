@@ -1,5 +1,10 @@
 export { default as InboxPanel } from './components/InboxPanel';
-export { INBOX_FILTERS, MOCK_MESSAGES, tagColor } from './data/inboxData';
+export { buildInboxMessages } from './lib/buildInboxMessages';
+export {
+  INBOX_FILTERS,
+  STATIC_INBOX_MESSAGES,
+  tagColor,
+} from './data/inboxData';
 export type {
   InboxMessage,
   MessageStatus,

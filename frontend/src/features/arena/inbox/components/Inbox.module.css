@@ -1,0 +1,351 @@
+.panel {
+  display: flex;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+}
+
+.listPane {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--inbox-border);
+  background: var(--inbox-bg);
+}
+
+.listHeader {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 8px;
+  border-bottom: 1px solid var(--inbox-border);
+}
+
+.listTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--inbox-text);
+  flex: 1;
+}
+
+.unreadBadge {
+  background: var(--inbox-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--inbox-border);
+  flex-wrap: wrap;
+}
+
+.filterChip {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.filterChipActive {
+  background: var(--inbox-active);
+  color: var(--inbox-text);
+}
+
+.filterChipIdle {
+  background: transparent;
+  color: var(--inbox-muted);
+}
+
+.listScroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.emptyList {
+  padding: 28px 18px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--inbox-muted);
+}
+
+.row {
+  position: relative;
+  padding: 12px 14px 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--inbox-border);
+  border-left: 3px solid transparent;
+  transition: background 0.12s;
+}
+
+.rowActive {
+  background: var(--inbox-active);
+}
+
+.rowUnread {
+  border-left-color: var(--inbox-accent);
+}
+
+.unreadDot {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--inbox-accent);
+}
+
+.rowTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.typePill {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.rowTime {
+  font-size: 11px;
+  color: var(--inbox-faint);
+  flex-shrink: 0;
+}
+
+.rowSubject {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--inbox-text);
+  line-height: 1.35;
+  margin-bottom: 3px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rowSubjectMuted {
+  font-weight: 500;
+  color: var(--inbox-muted);
+}
+
+.rowPreview {
+  font-size: 12px;
+  color: var(--inbox-muted);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.detailPane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--inbox-detail-bg);
+}
+
+.detailEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--inbox-muted);
+  font-size: 13px;
+}
+
+.detailScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.notificationCard {
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--inbox-border);
+  border-radius: 12px;
+  background: var(--inbox-surface);
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.cardBanner {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--inbox-border);
+}
+
+.cardType {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cardMeta {
+  font-size: 11px;
+  color: var(--inbox-faint);
+}
+
+.cardBody {
+  padding: 20px 18px 18px;
+}
+
+.cardFrom {
+  font-size: 12px;
+  color: var(--inbox-muted);
+  margin-bottom: 10px;
+}
+
+.cardTitle {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--inbox-text);
+}
+
+.cardExcerpt {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--inbox-muted);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.chip {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 100px;
+  border: 1px solid var(--inbox-border);
+  color: var(--inbox-muted);
+}
+
+.cardActions {
+  padding: 0 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.primaryAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--inbox-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.primaryAction:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--inbox-border);
+  background: transparent;
+  color: var(--inbox-text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.textAction {
+  font-size: 12px;
+  color: var(--inbox-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.cardFooter {
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--inbox-border);
+  font-size: 11px;
+  color: var(--inbox-faint);
+  line-height: 1.5;
+}
+
+.detailToolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 18px 0;
+  margin-top: -4px;
+}
+
+.archiveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--inbox-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.prose {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--inbox-muted);
+}
+
+.prose p {
+  margin: 0 0 10px;
+}
+
+.prose p:last-child {
+  margin-bottom: 0;
+}
