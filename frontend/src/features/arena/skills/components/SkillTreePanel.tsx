@@ -398,14 +398,14 @@ export default function SkillTreePanel() {
   const bundle = useFormationBundle();
   const [isFormateur, setIsFormateur] = useState(false);
   const [progress, setProgress] = useState<LearnerProgress[]>(
-    bundle.mockProgress,
+    bundle.progress,
   );
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   useEffect(() => {
-    setProgress(bundle.mockProgress);
+    setProgress(bundle.progress);
     setSelectedNode(null);
-  }, [bundle.formationId, bundle.mockProgress]);
+  }, [bundle.formationId, bundle.progress]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(
     buildNodes(bundle.nodes, bundle.edges, progress, isFormateur),

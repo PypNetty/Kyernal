@@ -1,22 +1,37 @@
-import { useMemo } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { useAuth } from '../../../auth';
-import { getFormationProgression } from '../data/formationProgression';
+import {
+  deriveFormationCcps,
+  getFormationProgression,
+} from '../data/formationProgression';
 import type { FormationProgressionBundle } from '../data/formationBundleTypes';
-import { getLearnerProgress } from '../lib/learnerProgressStorage';
+import {
+  getLearnerProgress,
+  getProgressRevision,
+  subscribeLearnerProgress,
+} from '../../../progress';
 
 export function useFormationBundle(): FormationProgressionBundle {
   const { data: session } = useAuth();
+  const progressRevision = useSyncExternalStore(
+    subscribeLearnerProgress,
+    getProgressRevision,
+    () => 0,
+  );
 
   return useMemo(() => {
     const base = getFormationProgression(session?.formationId);
 
     if (!session?.email || !session.formationId) {
-      return { ...base, mockProgress: [] };
+      return { ...base, progress: [], ccps: deriveFormationCcps(base, []) };
     }
 
-    const stored = getLearnerProgress(session.email, session.formationId);
-    const mockProgress = stored ?? [];
+    const progress = getLearnerProgress(session.email, session.formationId) ?? [];
 
-    return { ...base, mockProgress };
-  }, [session?.email, session?.formationId]);
+    return {
+      ...base,
+      progress,
+      ccps: deriveFormationCcps(base, progress),
+    };
+  }, [session?.email, session?.formationId, progressRevision]);
 }

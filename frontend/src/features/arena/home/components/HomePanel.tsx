@@ -8,7 +8,7 @@ import {
   getProgressSnapshot,
   getRecommendedIncident,
   type LastSession,
-  type RecommendedIncident,
+  type NextIncident,
 } from '../data/homeData';
 import styles from './Home.module.css';
 
@@ -93,7 +93,7 @@ function FocalResumeCard({ session }: { session: LastSession }) {
           params={{ incidentId: session.ticketRouteId }}
           className={styles.cta}
         >
-          Reprendre la session
+          Reprendre le ticket
           <CtaArrow />
         </Link>
       </div>
@@ -101,8 +101,15 @@ function FocalResumeCard({ session }: { session: LastSession }) {
   );
 }
 
-function FocalRecommendedCard({ incident }: { incident: RecommendedIncident }) {
+function FocalRecommendedCard({
+  incident,
+  isNew,
+}: {
+  incident: NextIncident;
+  isNew: boolean;
+}) {
   const locked = incident.status === 'locked';
+  const ctaLabel = isNew ? 'Ouvrir le ticket' : 'Voir le ticket';
 
   return (
     <section className={`${styles.focal} ${styles.reveal} ${styles.d4}`}>
@@ -121,7 +128,7 @@ function FocalRecommendedCard({ incident }: { incident: RecommendedIncident }) {
           className={styles.cta}
           style={locked ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
         >
-          Lancer le lab
+          {ctaLabel}
           <CtaArrow />
         </Link>
       </div>
@@ -144,13 +151,13 @@ function subtitleForState(
 ): string {
   switch (state) {
     case 'in-progress':
-      return 'Une session t\u2019attend. Reprends là où tu t\u2019es arrêté.';
+      return 'Un ticket t\u2019attend. Reprends là où tu t\u2019es arrêté.';
     case 'new':
-      return 'Ton premier lab est prêt. Lance une session pour découvrir comment Kyernal fonctionne.';
+      return 'Ton premier ticket t\u2019attend. Découvre comment Kyernal fonctionne.';
     case 'continue':
-      return 'Ton prochain lab est prêt. Lance une nouvelle session.';
+      return 'Ton prochain ticket est prêt.';
     case 'complete':
-      return 'Tous tes labs sont complétés — explore tes compétences ou consulte ta boîte de réception.';
+      return 'Tous tes tickets sont résolus — explore tes compétences ou consulte ta boîte de réception.';
   }
 }
 
@@ -160,9 +167,10 @@ export default function HomePanel() {
   const lastSession = getLastSession(bundle);
   const recommended = getRecommendedIncident(bundle);
   const snapshot = getProgressSnapshot(bundle);
-  const learnerState = getHomeLearnerState(lastSession, recommended);
-  const autonomyScore = computeAutonomyScore(bundle.mockProgress);
+  const learnerState = getHomeLearnerState(bundle);
+  const autonomyScore = computeAutonomyScore(bundle.progress);
 
+  const formationLabel = session?.user?.organization;
   const firstName = session?.user?.name?.split(' ')[0] ?? 'Apprenant';
   const xpPercent = Math.min(
     100,
@@ -190,12 +198,20 @@ export default function HomePanel() {
       {lastSession ? (
         <FocalResumeCard session={lastSession} />
       ) : recommended ? (
-        <FocalRecommendedCard incident={recommended} />
+        <FocalRecommendedCard incident={recommended} isNew={learnerState === 'new'} />
       ) : (
         <section className={`${styles.emptyFocal} ${styles.reveal} ${styles.d4}`}>
-          Tous les labs sont complétés — explore tes compétences ou consulte ta boîte de
+          Tous les tickets sont résolus — explore tes compétences ou consulte ta boîte de
           réception.
         </section>
+      )}
+
+      {!lastSession && learnerState === 'new' && (
+        <p className={`${styles.alt} ${styles.reveal} ${styles.d5}`}>
+          <Link to="/tickets" className={styles.altLink}>
+            Voir tous mes tickets →
+          </Link>
+        </p>
       )}
 
       {altRecommended && (
@@ -206,35 +222,48 @@ export default function HomePanel() {
             params={{ incidentId: altRecommended.ticketRouteId }}
             className={styles.altLink}
           >
-            Lance un nouveau lab — {altRecommended.node.title} (+{altRecommended.node.xp}&nbsp;XP)
+            Voir un autre ticket — {altRecommended.node.title} (+{altRecommended.node.xp}&nbsp;XP)
           </Link>
         </p>
       )}
 
       <div className={`${styles.progressStrip} ${styles.reveal} ${styles.d6}`}>
-        <span className={styles.lvl}>{snapshot.levelLabel}</span>
-        <span className={styles.xpBar}>
-          <span className={styles.xpBarFill} style={{ width: `${xpPercent}%` }} />
-        </span>
-        <span className={styles.xp}>
-          {snapshot.xpInLevel} / {snapshot.xpToNext} XP
-        </span>
-        {autonomyScore != null && (
-          <span className={styles.auto}>
-            Autonomie <b>{autonomyScore}</b>
-          </span>
+        {learnerState === 'new' ? (
+          <>
+            <span className={styles.lvl}>
+              {snapshot.completedTickets} / {snapshot.totalTickets} tickets
+            </span>
+            {formationLabel && (
+              <span className={styles.xp}>{formationLabel}</span>
+            )}
+          </>
+        ) : (
+          <>
+            <span className={styles.lvl}>{snapshot.levelLabel}</span>
+            <span className={styles.xpBar}>
+              <span className={styles.xpBarFill} style={{ width: `${xpPercent}%` }} />
+            </span>
+            <span className={styles.xp}>
+              {snapshot.xpInLevel} / {snapshot.xpToNext} XP
+            </span>
+            {autonomyScore != null && (
+              <span className={styles.auto}>
+                Autonomie <b>{autonomyScore}</b>
+              </span>
+            )}
+          </>
         )}
       </div>
 
       <nav className={`${styles.quietNav} ${styles.reveal} ${styles.d6}`}>
+        <Link to="/tickets" className={styles.quietLink}>
+          Mes tickets
+        </Link>
         <Link to="/competences" className={styles.quietLink}>
           Compétences
         </Link>
         <Link to="/inbox" className={styles.quietLink}>
           Boîte de réception
-        </Link>
-        <Link to="/statistiques" className={styles.quietLink}>
-          Statistiques
         </Link>
         <Link to="/ressources" className={styles.quietLink}>
           Ressources
@@ -242,7 +271,7 @@ export default function HomePanel() {
       </nav>
 
       <p className={`${styles.workspaceLink} ${styles.reveal} ${styles.d6}`}>
-        <Link to="/inbox" className={styles.workspaceLinkAnchor}>
+        <Link to="/tickets" className={styles.workspaceLinkAnchor}>
           Ouvrir l&apos;espace de travail
           <CtaArrow />
         </Link>

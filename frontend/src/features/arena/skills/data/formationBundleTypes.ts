@@ -13,7 +13,7 @@ export interface FormationTicket {
   competenceCode: string;
   ccpCode: string;
   priority: 'urgent' | 'haute' | 'moyenne' | 'basse';
-  status: 'en-cours' | 'a-faire' | 'resolu' | 'annule';
+  status: 'en-cours' | 'a-faire' | 'resolu' | 'annule' | 'verrouille';
   updatedAt: string;
 }
 
@@ -40,6 +40,6 @@ export interface FormationProgressionBundle {
   edges: SkillEdge[];
   tickets: FormationTicket[];
   ccps: FormationCcp[];
-  mockProgress: LearnerProgress[];
+  progress: LearnerProgress[];
   referential?: FormationReferentialMeta;
 }
