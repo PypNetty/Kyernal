@@ -218,14 +218,6 @@ const loginRoute = createRoute({
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: parseAuthRedirect(search),
   }),
-  beforeLoad: ({ search }) => {
-    const session = getStoredSession();
-    if (!session) return;
-    if (hasSelectedFormation(session)) {
-      throw redirect({ to: search.redirect });
-    }
-    throw redirect({ to: '/formation', search: { redirect: search.redirect } });
-  },
   component: LoginPage,
 });
 
@@ -235,14 +227,6 @@ const signupRoute = createRoute({
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: parseAuthRedirect(search),
   }),
-  beforeLoad: ({ search }) => {
-    const session = getStoredSession();
-    if (!session) return;
-    if (hasSelectedFormation(session)) {
-      throw redirect({ to: search.redirect });
-    }
-    throw redirect({ to: '/formation', search: { redirect: search.redirect } });
-  },
   component: SignupPage,
 });
 

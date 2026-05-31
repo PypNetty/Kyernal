@@ -5,6 +5,7 @@ export { default as ProfilePage } from './components/ProfilePage';
 export { getStoredSession } from './lib/authStorage';
 export { hasSelectedFormation, getFormationById, FORMATIONS } from './data/formations';
 export { useAuth } from './hooks/useAuth';
+export { useAuthReady } from './hooks/useAuthReady';
 export { useLogin } from './hooks/useLogin';
 export { useSignup } from './hooks/useSignup';
 export { useLogout } from './hooks/useLogout';

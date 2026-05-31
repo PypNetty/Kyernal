@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useState, type CSSProperties } from 'react';
+import { useAuthReady } from '../../auth';
 import KyernalLogo from './KyernalLogo';
 import { LANDING_VIDEO_URL } from '../config';
 import { THEMES } from '../theme/landingTheme';
@@ -52,7 +53,15 @@ function getThemeVars(mode: Mode): CSSProperties {
   } as CSSProperties;
 }
 
-function Nav({ mode, onToggle }: { mode: Mode; onToggle: () => void }) {
+function Nav({
+  mode,
+  onToggle,
+  isLoggedIn,
+}: {
+  mode: Mode;
+  onToggle: () => void;
+  isLoggedIn: boolean;
+}) {
   return (
     <nav className={styles.nav}>
       <div className={styles.navLeft}>
@@ -78,18 +87,26 @@ function Nav({ mode, onToggle }: { mode: Mode; onToggle: () => void }) {
         >
           {mode === 'dark' ? '☀' : '◐'}
         </button>
-        <Link to="/login" className={`${styles.btnSecondary} ${styles.navBtn}`}>
-          Se connecter
-        </Link>
-        <Link to="/signup" className={`${styles.btnPrimary} ${styles.navBtnPrimary}`}>
-          Créer un compte
-        </Link>
+        {isLoggedIn ? (
+          <Link to="/home" className={`${styles.btnPrimary} ${styles.navBtnPrimary}`}>
+            Tableau de bord
+          </Link>
+        ) : (
+          <>
+            <Link to="/login" className={`${styles.btnSecondary} ${styles.navBtn}`}>
+              Se connecter
+            </Link>
+            <Link to="/signup" className={`${styles.btnPrimary} ${styles.navBtnPrimary}`}>
+              Créer un compte
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   );
 }
 
-function Hero() {
+function Hero({ isLoggedIn }: { isLoggedIn: boolean }) {
   return (
     <section className={styles.hero}>
       <div className={styles.badge}>
@@ -110,12 +127,20 @@ function Hero() {
       </p>
 
       <div className={styles.ctaRow}>
-        <Link to="/signup" className={`${styles.btnPrimary} ${styles.ctaBtn}`}>
-          Créer un compte
-        </Link>
-        <Link to="/login" className={`${styles.btnSecondary} ${styles.ctaBtn}`}>
-          Se connecter
-        </Link>
+        {isLoggedIn ? (
+          <Link to="/home" className={`${styles.btnPrimary} ${styles.ctaBtn}`}>
+            Tableau de bord
+          </Link>
+        ) : (
+          <>
+            <Link to="/signup" className={`${styles.btnPrimary} ${styles.ctaBtn}`}>
+              Créer un compte
+            </Link>
+            <Link to="/login" className={`${styles.btnSecondary} ${styles.ctaBtn}`}>
+              Se connecter
+            </Link>
+          </>
+        )}
         <a href="#demo" className={`${styles.btnSecondary} ${styles.ctaBtn}`}>
           Voir la démo
         </a>
@@ -177,7 +202,7 @@ function Features() {
   );
 }
 
-function Pricing() {
+function Pricing({ isLoggedIn }: { isLoggedIn: boolean }) {
   return (
     <section id="tarifs" className={`${styles.section} ${styles.sectionNarrow}`}>
       <div className={`${styles.sectionHead} ${styles.sectionHeadTight}`}>
@@ -195,9 +220,15 @@ function Pricing() {
             <li>✓ Environnements éphémères</li>
             <li>✓ Agent IA (Texte uniquement)</li>
           </ul>
-          <Link to="/signup" className={`${styles.btnSecondary} ${styles.priceBtn}`}>
-            Créer un compte
-          </Link>
+          {isLoggedIn ? (
+            <Link to="/home" className={`${styles.btnSecondary} ${styles.priceBtn}`}>
+              Tableau de bord
+            </Link>
+          ) : (
+            <Link to="/signup" className={`${styles.btnSecondary} ${styles.priceBtn}`}>
+              Créer un compte
+            </Link>
+          )}
         </div>
 
         <div className={`${styles.priceCard} ${styles.priceCardPro}`}>
@@ -212,9 +243,15 @@ function Pricing() {
             <li>✓ Agent IA Vocal complet</li>
             <li>✓ Tableaux de bord de progression</li>
           </ul>
-          <Link to="/signup" className={`${styles.btnPrimary} ${styles.priceBtn}`}>
-            Passer Pro
-          </Link>
+          {isLoggedIn ? (
+            <Link to="/home" className={`${styles.btnPrimary} ${styles.priceBtn}`}>
+              Tableau de bord
+            </Link>
+          ) : (
+            <Link to="/signup" className={`${styles.btnPrimary} ${styles.priceBtn}`}>
+              Passer Pro
+            </Link>
+          )}
         </div>
       </div>
     </section>
@@ -272,19 +309,20 @@ function Footer({ mode }: { mode: Mode }) {
 export default function PublicLanding() {
   const [mode, setMode] = useState<Mode>('dark');
   const toggle = () => setMode((m) => (m === 'dark' ? 'light' : 'dark'));
+  const { isAuthReady: isLoggedIn } = useAuthReady();
 
   return (
     <div className={styles.root} style={getThemeVars(mode)}>
       <div className={styles.grid} aria-hidden="true" />
       <div className={styles.halo} aria-hidden="true" />
 
-      <Nav mode={mode} onToggle={toggle} />
+      <Nav mode={mode} onToggle={toggle} isLoggedIn={isLoggedIn} />
 
       <main className={styles.main}>
-        <Hero />
+        <Hero isLoggedIn={isLoggedIn} />
         <DemoVideo />
         <Features />
-        <Pricing />
+        <Pricing isLoggedIn={isLoggedIn} />
       </main>
 
       <Footer mode={mode} />
