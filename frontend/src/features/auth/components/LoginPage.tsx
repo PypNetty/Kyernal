@@ -1,7 +1,9 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useSearch } from '@tanstack/react-router';
 import { useState, type FocusEvent, type FormEvent } from 'react';
 import KyernalLogo from '../../landing/components/KyernalLogo';
 import { THEMES } from '../../landing/theme/landingTheme';
+import { AuthSessionNotice } from './AuthSessionNotice';
+import { useAuth } from '../hooks/useAuth';
 import { useLogin } from '../hooks/useLogin';
 
 const inputFocusHandlers = (
@@ -23,6 +25,8 @@ export default function LoginPage() {
   const [btnHovered, setBtnHovered] = useState(false);
   const t = THEMES[mode];
   const loginMutation = useLogin();
+  const { redirect } = useSearch({ from: '/login' });
+  const { data: session } = useAuth();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -173,6 +177,8 @@ export default function LoginPage() {
               Accédez à votre espace Kyernal
             </p>
           </div>
+
+          <AuthSessionNotice session={session} redirect={redirect} t={t} />
 
           <form
             onSubmit={handleSubmit}

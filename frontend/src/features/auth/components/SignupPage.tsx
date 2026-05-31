@@ -1,7 +1,9 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useSearch } from '@tanstack/react-router';
 import { useState, type FocusEvent, type FormEvent } from 'react';
 import KyernalLogo from '../../landing/components/KyernalLogo';
 import { THEMES } from '../../landing/theme/landingTheme';
+import { AuthSessionNotice } from './AuthSessionNotice';
+import { useAuth } from '../hooks/useAuth';
 import { useSignup } from '../hooks/useSignup';
 
 const inputFocusHandlers = (
@@ -24,6 +26,8 @@ export default function SignupPage() {
   const [btnHovered, setBtnHovered] = useState(false);
   const t = THEMES[mode];
   const signupMutation = useSignup();
+  const { redirect } = useSearch({ from: '/signup' });
+  const { data: session } = useAuth();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -182,6 +186,8 @@ export default function SignupPage() {
               Rejoignez Kyernal et commencez à pratiquer sur de vraies infrastructures.
             </p>
           </div>
+
+          <AuthSessionNotice session={session} redirect={redirect} t={t} />
 
           <form
             onSubmit={handleSubmit}
