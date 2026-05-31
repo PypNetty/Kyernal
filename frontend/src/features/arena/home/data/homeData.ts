@@ -1,10 +1,8 @@
+import type { FormationProgressionBundle } from '../../skills/data/formationBundleTypes';
 import {
   computeNodeStatus,
   getCurrentLevel,
   getTotalXp,
-  MOCK_PROGRESS,
-  SKILL_EDGES,
-  SKILL_NODES,
   type NodeDomain,
   type NodeStatus,
   type SkillNode,
@@ -47,17 +45,22 @@ function incidentRouteId(incidentId: string): string {
   return incidentId.replace(/^INC-/, '');
 }
 
-function findNodeById(nodeId: string): SkillNode {
-  const node = SKILL_NODES.find((n) => n.id === nodeId);
+function findNodeById(
+  bundle: FormationProgressionBundle,
+  nodeId: string,
+): SkillNode {
+  const node = bundle.nodes.find((n) => n.id === nodeId);
   if (!node) throw new Error(`Unknown skill node: ${nodeId}`);
   return node;
 }
 
-export function getLastSession(): LastSession | null {
-  const inProgress = MOCK_PROGRESS.find((p) => p.status === 'in-progress');
+export function getLastSession(
+  bundle: FormationProgressionBundle,
+): LastSession | null {
+  const inProgress = bundle.mockProgress.find((p) => p.status === 'in-progress');
   if (!inProgress) return null;
 
-  const node = findNodeById(inProgress.nodeId);
+  const node = findNodeById(bundle, inProgress.nodeId);
   if (!node.incidentId) return null;
 
   return {
@@ -72,14 +75,17 @@ export function getLastSession(): LastSession | null {
   };
 }
 
-export function getRecommendedIncident(): RecommendedIncident | null {
-  const inProgressNodeId = MOCK_PROGRESS.find(
+export function getRecommendedIncident(
+  bundle: FormationProgressionBundle,
+): RecommendedIncident | null {
+  const { nodes, edges, mockProgress: progress } = bundle;
+  const inProgressNodeId = progress.find(
     (p) => p.status === 'in-progress',
   )?.nodeId;
 
-  const available = MOCK_PROGRESS.filter((p) => p.status === 'available');
+  const available = progress.filter((p) => p.status === 'available');
   if (available.length > 0) {
-    const node = findNodeById(available[0].nodeId);
+    const node = findNodeById(bundle, available[0].nodeId);
     if (!node.incidentId) return null;
     return {
       node,
@@ -91,16 +97,16 @@ export function getRecommendedIncident(): RecommendedIncident | null {
   }
 
   if (inProgressNodeId) {
-    const nextTargets = SKILL_EDGES.filter(
-      (edge) => edge.source === inProgressNodeId,
-    ).map((edge) => edge.target);
+    const nextTargets = edges
+      .filter((edge) => edge.source === inProgressNodeId)
+      .map((edge) => edge.target);
 
     for (const targetId of nextTargets) {
-      const status = computeNodeStatus(targetId, MOCK_PROGRESS, SKILL_EDGES);
+      const status = computeNodeStatus(targetId, progress, edges);
       if (status === 'locked' || status === 'available') {
-        const node = findNodeById(targetId);
+        const node = findNodeById(bundle, targetId);
         if (!node.incidentId) continue;
-        const current = findNodeById(inProgressNodeId);
+        const current = findNodeById(bundle, inProgressNodeId);
         return {
           node,
           incidentId: node.incidentId,
@@ -115,25 +121,26 @@ export function getRecommendedIncident(): RecommendedIncident | null {
   return null;
 }
 
-export function getProgressSnapshot(): ProgressSnapshot {
-  const totalXp = getTotalXp(MOCK_PROGRESS);
+export function getProgressSnapshot(
+  bundle: FormationProgressionBundle,
+): ProgressSnapshot {
+  const { nodes, edges, mockProgress: progress } = bundle;
+  const totalXp = getTotalXp(progress);
   const level = getCurrentLevel(totalXp);
-  const completedLabs = MOCK_PROGRESS.filter(
-    (p) => p.status === 'completed',
-  ).length;
-  const inProgress = MOCK_PROGRESS.find((p) => p.status === 'in-progress');
+  const completedLabs = progress.filter((p) => p.status === 'completed').length;
+  const inProgress = progress.find((p) => p.status === 'in-progress');
   const inProgressLab = inProgress
-    ? findNodeById(inProgress.nodeId).title
+    ? findNodeById(bundle, inProgress.nodeId).title
     : null;
 
   const domains: NodeDomain[] = ['linux', 'web', 'reseau', 'securite', 'cloud'];
   const domainProgress = domains.map((domain) => {
-    const nodes = SKILL_NODES.filter((n) => n.domain === domain);
-    const done = nodes.filter((n) => {
-      const status = computeNodeStatus(n.id, MOCK_PROGRESS, SKILL_EDGES);
+    const domainNodes = nodes.filter((n) => n.domain === domain);
+    const done = domainNodes.filter((n) => {
+      const status = computeNodeStatus(n.id, progress, edges);
       return status === 'completed';
     }).length;
-    return { domain, done, total: nodes.length };
+    return { domain, done, total: domainNodes.length };
   });
 
   return {
@@ -143,9 +150,8 @@ export function getProgressSnapshot(): ProgressSnapshot {
     xpInLevel: totalXp - level.min,
     xpToNext: level.max - level.min + 1,
     completedLabs,
-    totalLabs: SKILL_NODES.length,
+    totalLabs: nodes.length,
     inProgressLab,
     domainProgress: domainProgress.filter((d) => d.total > 0),
   };
 }
-

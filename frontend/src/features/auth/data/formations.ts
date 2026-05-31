@@ -12,8 +12,8 @@ export const FORMATIONS: Formation[] = [
     id: 'tssr',
     name: 'TSSR',
     description:
-      'Technicien Supérieur Systèmes et Réseaux — exploitation Linux, services et réseau.',
-    ccps: ['CCP1', 'CCP2', 'CCP3'],
+      'Technicien supérieur systèmes et réseaux (TP-01351, millésime 02) — 2 blocs, 9 compétences professionnelles REAC 2023.',
+    ccps: ['CCP1', 'CCP2'],
     roleLabel: 'Apprenant · TSSR',
     accent: '#0055e5',
   },

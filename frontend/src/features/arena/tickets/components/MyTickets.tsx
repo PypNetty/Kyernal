@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useContext } from 'react';
 import { LayoutCtx } from '../../layout/components/Layout';
+import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
 
 // --- TYPES ---
 type TicketStatus = 'en-cours' | 'a-faire' | 'resolu' | 'annule';
@@ -17,90 +18,6 @@ interface Ticket {
   updatedAt: string;
   vmActive?: boolean;
 }
-
-// --- MOCK DATA ---
-const MOCK_TICKETS: Ticket[] = [
-  {
-    id: 'INC-042',
-    incidentId: '042',
-    title: 'Apache ne répond plus sur le port 80',
-    status: 'en-cours',
-    priority: 'urgent',
-    competence: 'CCP2',
-    updatedAt: "À l'instant",
-    vmActive: true,
-  },
-  {
-    id: 'INC-088',
-    incidentId: '088',
-    title: 'Problème DNS interne',
-    status: 'en-cours',
-    priority: 'moyenne',
-    competence: 'CCP1',
-    updatedAt: 'Il y a 2h',
-    vmActive: false,
-  },
-  {
-    id: 'INC-101',
-    incidentId: '101',
-    title: 'Espace disque critique sur /var',
-    status: 'a-faire',
-    priority: 'haute',
-    competence: 'CCP2',
-    updatedAt: 'Hier',
-    vmActive: false,
-  },
-  {
-    id: 'INC-115',
-    incidentId: '115',
-    title: "Service cron ne s'exécute plus",
-    status: 'a-faire',
-    priority: 'moyenne',
-    competence: 'CCP2',
-    updatedAt: 'Hier',
-    vmActive: false,
-  },
-  {
-    id: 'INC-077',
-    incidentId: '077',
-    title: 'Durcissement SSH — désactiver root login',
-    status: 'a-faire',
-    priority: 'basse',
-    competence: 'CCP3',
-    updatedAt: 'Lun',
-    vmActive: false,
-  },
-  {
-    id: 'INC-035',
-    incidentId: '035',
-    title: 'fail2ban bloque des IP légitimes',
-    status: 'resolu',
-    priority: 'haute',
-    competence: 'CCP3',
-    updatedAt: 'Mar',
-    vmActive: false,
-  },
-  {
-    id: 'INC-021',
-    incidentId: '021',
-    title: 'Nginx — erreur 502 Bad Gateway',
-    status: 'resolu',
-    priority: 'urgent',
-    competence: 'CCP2',
-    updatedAt: '12 mai',
-    vmActive: false,
-  },
-  {
-    id: 'INC-009',
-    incidentId: '009',
-    title: 'Partition /boot pleine après mise à jour',
-    status: 'resolu',
-    priority: 'haute',
-    competence: 'CCP2',
-    updatedAt: '5 mai',
-    vmActive: false,
-  },
-];
 
 // --- STATUT CONFIG ---
 const STATUS_CONFIG: Record<
@@ -502,6 +419,24 @@ function TicketRow({
 export default function MyTickets() {
   const { dark, startSession } = useContext(LayoutCtx);
   const navigate = useNavigate();
+  const bundle = useFormationBundle();
+
+  const tickets: Ticket[] = useMemo(
+    () =>
+      bundle.tickets.map((t) => ({
+        id: t.id,
+        incidentId: t.incidentId,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        competence: bundle.referential
+          ? `${t.ccpCode} · ${t.competenceCode}`
+          : t.competenceCode,
+        updatedAt: t.updatedAt,
+        vmActive: t.status === 'en-cours',
+      })),
+    [bundle],
+  );
 
   const border = dark ? '#1f1f1f' : '#e8e8e5';
   const bg = dark ? '#0e0f11' : '#f7f7f9';
@@ -509,10 +444,10 @@ export default function MyTickets() {
   const textMuted = dark ? '#8a8a93' : '#6b6b6b';
 
   const grouped: Record<TicketStatus, Ticket[]> = {
-    'en-cours': MOCK_TICKETS.filter((t) => t.status === 'en-cours'),
-    'a-faire': MOCK_TICKETS.filter((t) => t.status === 'a-faire'),
-    resolu: MOCK_TICKETS.filter((t) => t.status === 'resolu'),
-    annule: MOCK_TICKETS.filter((t) => t.status === 'annule'),
+    'en-cours': tickets.filter((t) => t.status === 'en-cours'),
+    'a-faire': tickets.filter((t) => t.status === 'a-faire'),
+    resolu: tickets.filter((t) => t.status === 'resolu'),
+    annule: tickets.filter((t) => t.status === 'annule'),
   };
 
   const handleTicketClick = async (ticket: Ticket) => {
@@ -555,7 +490,7 @@ export default function MyTickets() {
           }}
         >
           {
-            MOCK_TICKETS.filter(
+            tickets.filter(
               (t) => t.status !== 'resolu' && t.status !== 'annule',
             ).length
           }{' '}

@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useContext } from 'react';
+import React, { useState, useCallback, useContext, useEffect } from 'react';
+import { useFormationBundle } from '../hooks/useFormationBundle';
 import ReactFlow, {
   Node,
   Edge,
@@ -18,9 +19,6 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { LayoutCtx } from '../../layout/components/Layout';
 import {
-  SKILL_NODES,
-  SKILL_EDGES,
-  MOCK_PROGRESS,
   DOMAIN_COLORS,
   XP_LEVELS,
   getCurrentLevel,
@@ -29,6 +27,7 @@ import {
   NodeStatus,
   SkillNode,
   LearnerProgress,
+  SkillEdge,
 } from '../data/progressionConfig';
 
 // ── COULEURS STATUT ────────────────────────────────────────────────────────
@@ -111,7 +110,7 @@ function SkillNodeComponent({ data }: NodeProps) {
             letterSpacing: '0.5px',
           }}
         >
-          {node.domain.toUpperCase()}
+          {node.competenceCode ?? node.domain.toUpperCase()}
         </span>
         <span style={{ fontSize: '12px' }}>{STATUS_ICON[status]}</span>
       </div>
@@ -198,9 +197,14 @@ function SkillNodeComponent({ data }: NodeProps) {
 const nodeTypes = { skillNode: SkillNodeComponent };
 
 // ── CONVERSION config → ReactFlow ─────────────────────────────────────────
-function buildNodes(progress: LearnerProgress[], isFormateur: boolean): Node[] {
-  return SKILL_NODES.map((n) => {
-    const status = computeNodeStatus(n.id, progress, SKILL_EDGES);
+function buildNodes(
+  skillNodes: SkillNode[],
+  skillEdges: SkillEdge[],
+  progress: LearnerProgress[],
+  isFormateur: boolean,
+): Node[] {
+  return skillNodes.map((n) => {
+    const status = computeNodeStatus(n.id, progress, skillEdges);
     return {
       id: n.id,
       type: 'skillNode',
@@ -217,9 +221,12 @@ function buildNodes(progress: LearnerProgress[], isFormateur: boolean): Node[] {
   });
 }
 
-function buildEdges(progress: LearnerProgress[]): Edge[] {
-  return SKILL_EDGES.map((e) => {
-    const sourceStatus = computeNodeStatus(e.source, progress, SKILL_EDGES);
+function buildEdges(
+  skillEdges: SkillEdge[],
+  progress: LearnerProgress[],
+): Edge[] {
+  return skillEdges.map((e) => {
+    const sourceStatus = computeNodeStatus(e.source, progress, skillEdges);
     const isActive = sourceStatus === 'completed';
     return {
       id: e.id,
@@ -254,9 +261,13 @@ function buildEdges(progress: LearnerProgress[]): Edge[] {
 function StatsPanel({
   progress,
   dark,
+  totalNodes,
+  skillNodes,
 }: {
   progress: LearnerProgress[];
   dark: boolean;
+  totalNodes: number;
+  skillNodes: SkillNode[];
 }) {
   const totalXp = getTotalXp(progress);
   const level = getCurrentLevel(totalXp);
@@ -266,7 +277,7 @@ function StatsPanel({
     ? Math.round(((totalXp - level.min) / (nextLevel.min - level.min)) * 100)
     : 100;
   const completed = progress.filter((p) => p.status === 'completed').length;
-  const total = SKILL_NODES.length;
+  const total = totalNodes;
 
   return (
     <div
@@ -352,11 +363,13 @@ function StatsPanel({
           flexWrap: 'wrap',
         }}
       >
-        {SKILL_NODES.filter(
-          (n) =>
-            n.badge &&
-            progress.find((p) => p.nodeId === n.id)?.status === 'completed',
-        ).map((n) => (
+        {skillNodes
+          .filter(
+            (n) =>
+              n.badge &&
+              progress.find((p) => p.nodeId === n.id)?.status === 'completed',
+          )
+          .map((n) => (
           <span
             key={n.id}
             style={{
@@ -378,20 +391,32 @@ function StatsPanel({
 // ── COMPOSANT PRINCIPAL ───────────────────────────────────────────────────
 export default function SkillTreePanel() {
   const { dark } = useContext(LayoutCtx);
+  const bundle = useFormationBundle();
   const [isFormateur, setIsFormateur] = useState(false);
-  const [progress, setProgress] = useState<LearnerProgress[]>(MOCK_PROGRESS);
+  const [progress, setProgress] = useState<LearnerProgress[]>(
+    bundle.mockProgress,
+  );
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(
-    buildNodes(progress, isFormateur),
-  );
-  const [edges, setEdges, onEdgesChange] = useEdgesState(buildEdges(progress));
+  useEffect(() => {
+    setProgress(bundle.mockProgress);
+    setSelectedNode(null);
+  }, [bundle.formationId, bundle.mockProgress]);
 
-  // Mise à jour quand le rôle change
+  const [nodes, setNodes, onNodesChange] = useNodesState(
+    buildNodes(bundle.nodes, bundle.edges, progress, isFormateur),
+  );
+  const [edges, setEdges, onEdgesChange] = useEdgesState(
+    buildEdges(bundle.edges, progress),
+  );
+
+  useEffect(() => {
+    setNodes(buildNodes(bundle.nodes, bundle.edges, progress, isFormateur));
+    setEdges(buildEdges(bundle.edges, progress));
+  }, [bundle.nodes, bundle.edges, progress, isFormateur, setNodes, setEdges]);
+
   const handleRoleToggle = () => {
-    const next = !isFormateur;
-    setIsFormateur(next);
-    setNodes(buildNodes(progress, next));
+    setIsFormateur((prev) => !prev);
   };
 
   // Formateur — ajout de lien par drag
@@ -420,6 +445,7 @@ export default function SkillTreePanel() {
   }, []);
 
   const border = dark ? '#1f1f1f' : '#e8e8e5';
+  const headerTextMuted = dark ? '#8a8a93' : '#6b6b6b';
   const bg = dark ? '#09090b' : '#fafaf9';
   const textMain = dark ? '#ededed' : '#111113';
   const textMuted = dark ? '#8a8a93' : '#6b6b6b';
@@ -455,6 +481,18 @@ export default function SkillTreePanel() {
           }}
         >
           Arbre de compétences
+          {bundle.referential?.treeLabel && (
+            <span
+              style={{
+                marginLeft: '8px',
+                fontSize: '10px',
+                fontWeight: 500,
+                color: headerTextMuted,
+              }}
+            >
+              · {bundle.referential.treeLabel}
+            </span>
+          )}
         </span>
 
         {/* Légende domaines */}
@@ -541,6 +579,7 @@ export default function SkillTreePanel() {
       {/* Canvas ReactFlow */}
       <div style={{ flex: 1, position: 'relative' }}>
         <ReactFlow
+          key={bundle.formationId}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
@@ -569,18 +608,23 @@ export default function SkillTreePanel() {
 
           {/* Panel stats en haut à gauche */}
           <Panel position="top-left">
-            <StatsPanel progress={progress} dark={dark} />
+            <StatsPanel
+              progress={progress}
+              dark={dark}
+              totalNodes={bundle.nodes.length}
+              skillNodes={bundle.nodes}
+            />
           </Panel>
 
           {/* Panel détail nœud sélectionné */}
           {selectedNode &&
             (() => {
-              const node = SKILL_NODES.find((n) => n.id === selectedNode);
+              const node = bundle.nodes.find((n) => n.id === selectedNode);
               const prog = progress.find((p) => p.nodeId === selectedNode);
               const status = computeNodeStatus(
                 selectedNode,
                 progress,
-                SKILL_EDGES,
+                bundle.edges,
               );
               if (!node) return null;
               const color = DOMAIN_COLORS[node.domain];
