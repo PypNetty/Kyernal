@@ -1,198 +1,23 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { LayoutCtx } from '../../layout/components/Layout';
+import type { FormationCcp } from '../data/formationBundleTypes';
+import { useFormationBundle } from '../hooks/useFormationBundle';
 
-// --- TYPES ---
-interface CompetenceItem {
-  id: string;
-  label: string;
-  validated: boolean;
-  ticketIds: string[];
-}
-
-interface CCP {
-  id: string;
-  code: string;
-  title: string;
-  description: string;
-  color: string;
-  competences: CompetenceItem[];
-}
-
-// --- MOCK ---
-const MOCK_CCPS: CCP[] = [
-  {
-    id: 'ccp1',
-    code: 'CCP1',
-    title: "Administrer les composants d'un réseau",
-    description:
-      'Configurer et maintenir les équipements réseau, assurer la connectivité et diagnostiquer les pannes.',
-    color: '#4d8fff',
-    competences: [
-      {
-        id: 'c1',
-        label: "Configurer les paramètres réseau d'un poste",
-        validated: true,
-        ticketIds: ['INC-008'],
-      },
-      {
-        id: 'c2',
-        label: 'Mettre en place et tester une connexion réseau',
-        validated: true,
-        ticketIds: ['INC-012'],
-      },
-      {
-        id: 'c3',
-        label: 'Diagnostiquer un dysfonctionnement réseau',
-        validated: true,
-        ticketIds: ['INC-088'],
-      },
-      {
-        id: 'c4',
-        label: 'Configurer un serveur DNS',
-        validated: true,
-        ticketIds: ['INC-088', 'INC-014'],
-      },
-      {
-        id: 'c5',
-        label: 'Mettre en place un serveur DHCP',
-        validated: false,
-        ticketIds: [],
-      },
-      {
-        id: 'c6',
-        label: 'Configurer un pare-feu (iptables / nftables)',
-        validated: false,
-        ticketIds: [],
-      },
-      {
-        id: 'c7',
-        label: 'Mettre en place un VPN site-à-site',
-        validated: false,
-        ticketIds: [],
-      },
-    ],
-  },
-  {
-    id: 'ccp2',
-    code: 'CCP2',
-    title: 'Exploiter des serveurs Linux',
-    description:
-      'Installer, configurer et maintenir des serveurs Linux en conditions opérationnelles.',
-    color: '#30a46c',
-    competences: [
-      {
-        id: 'c8',
-        label: 'Installer et configurer un système Linux',
-        validated: true,
-        ticketIds: ['INC-003'],
-      },
-      {
-        id: 'c9',
-        label: 'Gérer les utilisateurs et les permissions',
-        validated: true,
-        ticketIds: ['INC-007'],
-      },
-      {
-        id: 'c10',
-        label: 'Configurer et maintenir un serveur web (Apache/Nginx)',
-        validated: true,
-        ticketIds: ['INC-021', 'INC-042'],
-      },
-      {
-        id: 'c11',
-        label: 'Gérer les services systemd',
-        validated: true,
-        ticketIds: ['INC-035'],
-      },
-      {
-        id: 'c12',
-        label: 'Surveiller et optimiser les ressources système',
-        validated: true,
-        ticketIds: ['INC-009', 'INC-101'],
-      },
-      {
-        id: 'c13',
-        label: 'Mettre en place des sauvegardes',
-        validated: false,
-        ticketIds: [],
-      },
-      {
-        id: 'c14',
-        label: 'Automatiser des tâches avec cron et scripts bash',
-        validated: false,
-        ticketIds: ['INC-115'],
-      },
-      {
-        id: 'c15',
-        label: 'Déployer et gérer des conteneurs Docker',
-        validated: false,
-        ticketIds: [],
-      },
-    ],
-  },
-  {
-    id: 'ccp3',
-    code: 'CCP3',
-    title: 'Sécuriser les infrastructures',
-    description:
-      'Mettre en œuvre et maintenir la sécurité des systèmes et des réseaux.',
-    color: '#a78bfa',
-    competences: [
-      {
-        id: 'c16',
-        label: 'Durcir la configuration SSH',
-        validated: true,
-        ticketIds: ['INC-077'],
-      },
-      {
-        id: 'c17',
-        label: 'Mettre en place fail2ban',
-        validated: true,
-        ticketIds: ['INC-035'],
-      },
-      {
-        id: 'c18',
-        label: 'Configurer les permissions sudo',
-        validated: false,
-        ticketIds: [],
-      },
-      {
-        id: 'c19',
-        label: 'Mettre en place une PKI / certificats TLS',
-        validated: false,
-        ticketIds: [],
-      },
-      {
-        id: 'c20',
-        label: "Auditer la sécurité d'un système",
-        validated: false,
-        ticketIds: [],
-      },
-      {
-        id: 'c21',
-        label: 'Configurer SELinux / AppArmor',
-        validated: false,
-        ticketIds: [],
-      },
-    ],
-  },
-];
-
-// --- HELPERS ---
-function getProgress(ccp: CCP) {
+function getProgress(ccp: FormationCcp) {
   const total = ccp.competences.length;
   const validated = ccp.competences.filter((c) => c.validated).length;
   return { validated, total, pct: Math.round((validated / total) * 100) };
 }
 
-function progressColor(pct: number, color: string) {
-  return color;
-}
-
-// --- COMPOSANT PRINCIPAL ---
 export default function CompetencePanel() {
   const { dark } = useContext(LayoutCtx);
-  const [selected, setSelected] = useState<string>('ccp1');
+  const bundle = useFormationBundle();
+  const ccps = bundle.ccps;
+  const [selected, setSelected] = useState(ccps[0]?.id ?? '');
+
+  useEffect(() => {
+    setSelected(ccps[0]?.id ?? '');
+  }, [bundle.formationId]);
 
   const border = dark ? '#27282b' : '#e8e8e5';
   const bg = dark ? '#0e0f11' : '#f7f7f9';
@@ -203,7 +28,14 @@ export default function CompetencePanel() {
   const activeBg = dark ? '#ffffff12' : '#00000012';
   const trackBg = dark ? '#27282b' : '#e8e8e5';
 
-  const selectedCCP = MOCK_CCPS.find((c) => c.id === selected)!;
+  const selectedCCP = ccps.find((c) => c.id === selected) ?? ccps[0];
+  if (!selectedCCP) {
+    return (
+      <div style={{ padding: 24, color: textMuted, fontSize: 13 }}>
+        Aucun référentiel de compétences pour cette formation.
+      </div>
+    );
+  }
   const selectedProgress = getProgress(selectedCCP);
 
   return (
@@ -215,7 +47,6 @@ export default function CompetencePanel() {
         background: bg,
       }}
     >
-      {/* ── LISTE CCP ── */}
       <div
         style={{
           width: '260px',
@@ -236,11 +67,24 @@ export default function CompetencePanel() {
         >
           <span style={{ fontSize: '13px', fontWeight: 600, color: textMain }}>
             Compétences
+            {bundle.referential?.badge && (
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  color: textMuted,
+                  marginTop: 2,
+                }}
+              >
+                {bundle.referential.badge}
+              </span>
+            )}
           </span>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: '8px' }}>
-          {MOCK_CCPS.map((ccp) => {
+          {ccps.map((ccp) => {
             const { validated, total, pct } = getProgress(ccp);
             const isActive = ccp.id === selected;
             return (
@@ -263,7 +107,6 @@ export default function CompetencePanel() {
                     e.currentTarget.style.background = 'transparent';
                 }}
               >
-                {/* Code + badge */}
                 <div
                   style={{
                     display: 'flex',
@@ -286,7 +129,6 @@ export default function CompetencePanel() {
                   </span>
                 </div>
 
-                {/* Titre */}
                 <div
                   style={{
                     fontSize: '12px',
@@ -299,7 +141,6 @@ export default function CompetencePanel() {
                   {ccp.title}
                 </div>
 
-                {/* Barre de progression */}
                 <div
                   style={{
                     height: '4px',
@@ -333,14 +174,13 @@ export default function CompetencePanel() {
           })}
         </div>
 
-        {/* Score global */}
         <div style={{ padding: '12px 16px', borderTop: `1px solid ${border}` }}>
           {(() => {
-            const totalAll = MOCK_CCPS.reduce(
+            const totalAll = ccps.reduce(
               (s, c) => s + c.competences.length,
               0,
             );
-            const validatedAll = MOCK_CCPS.reduce(
+            const validatedAll = ccps.reduce(
               (s, c) => s + c.competences.filter((x) => x.validated).length,
               0,
             );
@@ -387,7 +227,7 @@ export default function CompetencePanel() {
                       height: '100%',
                       borderRadius: '3px',
                       background:
-                        'linear-gradient(90deg, #4d8fff, #30a46c, #a78bfa)',
+                        'linear-gradient(90deg, #0055e5, #30a46c)',
                       width: `${pctAll}%`,
                       transition: 'width 0.4s ease',
                     }}
@@ -399,7 +239,6 @@ export default function CompetencePanel() {
         </div>
       </div>
 
-      {/* ── DÉTAIL CCP ── */}
       <div
         style={{
           flex: 1,
@@ -409,7 +248,6 @@ export default function CompetencePanel() {
           minWidth: 0,
         }}
       >
-        {/* Header */}
         <div
           style={{
             height: '48px',
@@ -459,7 +297,6 @@ export default function CompetencePanel() {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-          {/* Description */}
           <p
             style={{
               fontSize: '13px',
@@ -472,7 +309,6 @@ export default function CompetencePanel() {
             {selectedCCP.description}
           </p>
 
-          {/* Barre de progression détail */}
           <div style={{ marginBottom: '24px' }}>
             <div
               style={{
@@ -494,7 +330,6 @@ export default function CompetencePanel() {
             </div>
           </div>
 
-          {/* Groupes validé / à faire */}
           {(['validated', 'todo'] as const).map((group) => {
             const items = selectedCCP.competences.filter((c) =>
               group === 'validated' ? c.validated : !c.validated,
@@ -553,7 +388,6 @@ export default function CompetencePanel() {
                             : 'transparent',
                       }}
                     >
-                      {/* Checkbox */}
                       <div
                         style={{
                           width: '16px',
@@ -584,7 +418,6 @@ export default function CompetencePanel() {
                         )}
                       </div>
 
-                      {/* Label */}
                       <span
                         style={{
                           fontSize: '13px',
@@ -593,10 +426,21 @@ export default function CompetencePanel() {
                           opacity: group === 'validated' ? 1 : 0.8,
                         }}
                       >
+                        {bundle.referential && (
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              color: selectedCCP.color,
+                              marginRight: 6,
+                            }}
+                          >
+                            {comp.code}
+                          </span>
+                        )}
                         {comp.label}
                       </span>
 
-                      {/* Tickets associés */}
                       {comp.ticketIds.length > 0 && (
                         <div style={{ display: 'flex', gap: '4px' }}>
                           {comp.ticketIds.map((tid) => (
@@ -611,7 +455,7 @@ export default function CompetencePanel() {
                                 fontWeight: 500,
                               }}
                             >
-                              #{tid}
+                              {tid}
                             </span>
                           ))}
                         </div>
@@ -622,6 +466,35 @@ export default function CompetencePanel() {
               </div>
             );
           })}
+
+          {bundle.referential?.transversalLabels && (
+            <div style={{ marginTop: 8, paddingTop: 16, borderTop: `1px solid ${border}` }}>
+              <div
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: textMuted,
+                  letterSpacing: '0.5px',
+                  marginBottom: 10,
+                }}
+              >
+                COMPÉTENCES TRANSVERSALES
+              </div>
+              <ul
+                style={{
+                  margin: 0,
+                  paddingLeft: 18,
+                  fontSize: '12px',
+                  color: textMuted,
+                  lineHeight: 1.8,
+                }}
+              >
+                {bundle.referential.transversalLabels.map((label) => (
+                  <li key={label}>{label}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>

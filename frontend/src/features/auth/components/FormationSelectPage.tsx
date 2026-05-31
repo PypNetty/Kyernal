@@ -3,6 +3,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import KyernalLogo from '../../landing/components/KyernalLogo';
 import { THEMES } from '../../landing/theme/landingTheme';
 import { FORMATIONS } from '../data/formations';
+import { hasDedicatedProgression } from '../../arena/skills/data/formationProgression';
+import { TSSR_COMPETENCES, TSSR_REFERENTIAL_META } from '../data/tssrReferential';
 import { useAuth } from '../hooks/useAuth';
 import { useSelectFormation } from '../hooks/useSelectFormation';
 
@@ -36,6 +38,10 @@ export default function FormationSelectPage() {
       : selectMutation.isError
         ? 'Impossible de valider votre parcours.'
         : null;
+
+  const selectedFormation = FORMATIONS.find((f) => f.id === selectedId);
+  const isTssr = selectedId === 'tssr';
+  const hasDedicatedArena = hasDedicatedProgression(selectedId);
 
   return (
     <div
@@ -194,6 +200,72 @@ export default function FormationSelectPage() {
               );
             })}
           </div>
+
+          {selectedFormation && !hasDedicatedArena && (
+            <p
+              style={{
+                margin: '0 0 16px',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: `1px solid ${t.border}`,
+                background: t.bgCard,
+                fontSize: '12px',
+                color: t.textMuted,
+                lineHeight: 1.5,
+              }}
+            >
+              Le référentiel officiel REAC n’est pas encore disponible pour{' '}
+              {selectedFormation.name}. L’Arena affichera le parcours générique
+              (labs Linux, web, réseau) en attendant.
+            </p>
+          )}
+
+          {isTssr && selectedFormation && (
+            <div
+              style={{
+                marginBottom: '24px',
+                padding: '16px 18px',
+                borderRadius: '10px',
+                border: `1px solid ${selectedFormation.accent}33`,
+                background:
+                  mode === 'dark'
+                    ? `${selectedFormation.accent}12`
+                    : `${selectedFormation.accent}08`,
+              }}
+            >
+              <p
+                style={{
+                  margin: '0 0 8px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: selectedFormation.accent,
+                }}
+              >
+                Référentiel {TSSR_REFERENTIAL_META.sigle} · {TSSR_REFERENTIAL_META.code}{' '}
+                · millésime {TSSR_REFERENTIAL_META.millesime}
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: '12px', color: t.textMuted, lineHeight: 1.5 }}>
+                À la validation, vous accédez à l’arbre des 9 compétences professionnelles
+                et aux tickets d’entraînement associés (2 blocs CCP).
+              </p>
+              <ol
+                style={{
+                  margin: 0,
+                  paddingLeft: '18px',
+                  fontSize: '12px',
+                  color: t.text,
+                  lineHeight: 1.6,
+                }}
+              >
+                {TSSR_COMPETENCES.map((cp) => (
+                  <li key={cp.code}>
+                    <strong style={{ color: selectedFormation.accent }}>{cp.code}</strong>{' '}
+                    — {cp.label}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
 
           <label
             htmlFor="learning-goal"
