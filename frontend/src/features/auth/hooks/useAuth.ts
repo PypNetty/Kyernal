@@ -6,6 +6,6 @@ export function useAuth() {
   return useQuery({
     queryKey: authKeys.session(),
     queryFn: () => getSession(),
-    initialData: getSession() ?? undefined,
+    staleTime: 0,
   });
 }

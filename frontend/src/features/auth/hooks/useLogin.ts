@@ -16,7 +16,7 @@ export function useLogin() {
       if (session.formationId) {
         void navigate({ to: redirect });
       } else {
-        void navigate({ to: '/formation', search: { redirect } });
+        void navigate({ to: '/formation', search: { redirect, change: false } });
       }
     },
   });
