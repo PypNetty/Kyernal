@@ -4,28 +4,38 @@ import { PanelProps, TicketData } from '../../layout/context/types';
 import { getTicketStatusByRouteId } from '../../../progress';
 import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
 
-// Mock de l'Inbox
 const INBOX_TICKETS: TicketData[] = [
   {
-    id: "042", title: "Apache ne répond plus sur le port 80",
-    description: "Le serveur web de la RH ne répond plus depuis ce matin...",
-    reporter: "Utilisateur RH", duration: "10 min", server: "vm-web-rh",
-    os: "Debian 13", severity: "Critique",
+    id: '042',
+    title: 'Apache ne répond plus sur le port 80',
+    description:
+      'Le serveur web de la RH ne répond plus depuis ce matin. Le service semble planté.',
+    reporter: 'Utilisateur RH',
+    duration: '10 min',
+    server: 'vm-web-rh',
+    os: 'Debian 13',
+    severity: 'Critique',
     objectives: [
-      { text: "Diagnostiquer la cause du blocage", done: false, active: true },
-      { text: "Identifier le processus sur le port 80", done: false, active: false }
-    ]
+      { text: 'Diagnostiquer la cause du blocage', done: false, active: true },
+      { text: 'Identifier le processus sur le port 80', done: false, active: false },
+      { text: 'Relancer le service proprement', done: false, active: false },
+    ],
   },
   {
-    id: "088", title: "Problème DNS interne",
-    description: "Impossible de résoudre les noms de domaine du lab.",
-    reporter: "Formateur", duration: "1 heure", server: "vm-dns-master",
-    os: "Debian 13", severity: "Moyen",
-    objectives: [
-      { text: "Vérifier l'état de bind9", done: false, active: true }
-    ]
-  }
+    id: '088',
+    title: 'Problème DNS interne',
+    description:
+      'Impossible de résoudre les noms de domaine du lab. Les pings renvoient NXDOMAIN.',
+    reporter: 'Formateur',
+    duration: '1 heure',
+    server: 'vm-dns-master',
+    os: 'Debian 13',
+    severity: 'Moyen',
+    objectives: [{ text: "Vérifier l'état de bind9", done: false, active: true }],
+  },
 ];
+
+const mono = '"JetBrains Mono", "Fira Code", monospace';
 
 interface TicketPanelProps extends PanelProps {
   incidentId?: string;
@@ -61,11 +71,21 @@ export default function TicketPanel({
   const isLocked = ticketStatus === 'verrouille';
   const isUnknown = ticketStatus === 'unknown';
 
-  const border = dark ? '#1f1f1f' : '#e8e8e5';
-  const bg = dark ? '#0c0c0d' : '#fafaf9';
-  const bg2 = dark ? '#111113' : '#ffffff';
-  const text = dark ? '#ededed' : '#0f0f0f';
-  const text2 = dark ? '#a1a1aa' : '#6b6b6b';
+  const bg = dark ? '#000000' : '#f5f5f5';
+  const headerBg = dark ? '#111111' : '#e5e5e5';
+  const border = dark ? '#333333' : '#d4d4d4';
+  const text = dark ? '#888888' : '#666666';
+  const highlightText = dark ? '#eeeeee' : '#111111';
+  const accent = dark ? '#00ff00' : '#0066ff';
+  const critColor = dark ? '#ff3333' : '#cc0000';
+  const warnColor = dark ? '#ffcc00' : '#aa8800';
+  const okColor = dark ? '#33ff66' : '#30a46c';
+
+  const getSeverityColor = (sev: string) => {
+    if (sev === 'Critique') return critColor;
+    if (sev === 'Moyen') return warnColor;
+    return text;
+  };
 
   const handleResolve = async () => {
     if (!incidentId || resolving || isResolved) return;
@@ -83,35 +103,33 @@ export default function TicketPanel({
   const renderResolveAction = () => {
     if (isResolved) {
       return (
-        <div
-          style={{
-            alignSelf: 'flex-start',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            background: 'rgba(48,164,108,0.12)',
-            color: '#30a46c',
-            fontSize: '12px',
-            fontWeight: 600,
-          }}
-        >
-          Ticket résolu
+        <div style={{ marginTop: '20px', color: okColor, fontWeight: 'bold' }}>
+          [ RESOLVED ] Ticket clos
+          <div style={{ marginTop: '8px', fontWeight: 'normal' }}>
+            <Link
+              to="/tickets"
+              style={{ color: accent, textDecoration: 'none', fontSize: '11px' }}
+            >
+              → retour /tickets
+            </Link>
+          </div>
         </div>
       );
     }
 
     if (isLocked) {
       return (
-        <p style={{ fontSize: '12px', color: text2, margin: 0 }}>
-          Ce ticket est dans le backlog — termine les tickets précédents pour le
-          débloquer.
+        <p style={{ marginTop: '20px', color: warnColor, fontSize: '11px' }}>
+          [ LOCKED ] Ce ticket est dans le backlog — termine les tickets
+          précédents pour le débloquer.
         </p>
       );
     }
 
     if (isUnknown) {
       return (
-        <p style={{ fontSize: '12px', color: text2, margin: 0 }}>
-          Ce ticket n&apos;appartient pas à ton parcours actuel.
+        <p style={{ marginTop: '20px', color: text, fontSize: '11px' }}>
+          [ N/A ] Ce ticket n&apos;appartient pas à ton parcours actuel.
         </p>
       );
     }
@@ -122,18 +140,18 @@ export default function TicketPanel({
         disabled={resolving}
         onClick={() => void handleResolve()}
         style={{
-          alignSelf: 'flex-start',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          border: 'none',
-          background: resolving ? '#6b7280' : '#30a46c',
-          color: '#fff',
-          fontSize: '12px',
-          fontWeight: 600,
+          marginTop: '20px',
+          background: 'none',
+          border: `1px solid ${accent}`,
+          color: resolving ? text : accent,
+          fontFamily: mono,
+          fontSize: '11px',
+          fontWeight: 'bold',
+          padding: '4px 10px',
           cursor: resolving ? 'wait' : 'pointer',
         }}
       >
-        {resolving ? 'Résolution…' : 'Marquer comme résolu'}
+        {resolving ? '[ RESOLVING... ]' : '[ RESOLVE ] Marquer comme résolu'}
       </button>
     );
   };
@@ -146,11 +164,15 @@ export default function TicketPanel({
     }
   }, [incidentId]);
 
-  if (incidentId && (routeTicket || selectedTicket)) {
-    const title = routeTicket?.title ?? selectedTicket?.title ?? `INC-${incidentId}`;
+  const renderRouteDetail = () => {
+    if (!incidentId) return null;
+
+    const title =
+      routeTicket?.title ?? selectedTicket?.title ?? `INC-${incidentId}`;
     const description =
       selectedTicket?.description ??
       'Session de lab en cours — utilise le terminal pour diagnostiquer et corriger.';
+    const displayId = selectedTicket?.id ?? incidentId;
 
     return (
       <div
@@ -160,70 +182,242 @@ export default function TicketPanel({
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          background: bg2,
-          outline: isDraggedOver ? '2px dashed #0066ff' : 'none',
+          background: bg,
+          outline: isDraggedOver ? `1px solid ${accent}` : 'none',
+          fontFamily: mono,
         }}
       >
         <div
           style={{
-            height: '36px',
+            height: '30px',
             display: 'flex',
             alignItems: 'center',
-            padding: '0 16px',
+            padding: '0 8px',
             borderBottom: `1px solid ${border}`,
-            background: bg,
+            background: headerBg,
           }}
         >
           <span
             draggable
             onDragStart={(e) => onDragStart(e, 'ticket')}
             style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: text,
+              fontSize: '11px',
+              fontWeight: 'bold',
+              color: highlightText,
               cursor: 'grab',
+              flex: 1,
             }}
           >
-            ☰ Ticket #{incidentId}
+            [=] less /tickets/INC-{displayId}.log
           </span>
         </div>
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div>
-            <span style={{ fontSize: '11px', color: '#0066ff', fontWeight: 600 }}>
-              #INC-{incidentId}
-            </span>
-            <h4 style={{ fontSize: '13px', margin: '4px 0', color: text }}>{title}</h4>
-            <p style={{ fontSize: '11px', color: text2, margin: 0 }}>{description}</p>
+
+        <div
+          style={{
+            padding: '12px',
+            fontSize: '12px',
+            color: text,
+            overflowY: 'auto',
+            lineHeight: '1.6',
+          }}
+        >
+          <div style={{ color: highlightText, opacity: 0.5, marginBottom: '8px' }}>
+            ==================================================
           </div>
-          <p style={{ fontSize: '12px', color: text }}>
-            {loading ? 'Préparation de la VM...' : vmHost ? 'VM prête' : 'En attente de VM'}
-          </p>
-          {renderResolveAction()}
-          {isResolved && (
-            <Link
-              to="/tickets"
-              style={{ fontSize: '12px', color: '#0066ff', textDecoration: 'none' }}
-            >
-              Retour à mes tickets →
-            </Link>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: highlightText, fontWeight: 'bold' }}>
+              INCIDENT #{displayId}
+            </span>
+            <span style={{ color: loading ? warnColor : vmHost ? accent : text }}>
+              STATUS:{' '}
+              {loading
+                ? '[ PROVISIONING... ]'
+                : vmHost
+                  ? '[ CONNECTED ]'
+                  : '[ WAITING ]'}
+            </span>
+          </div>
+          <div style={{ color: highlightText, opacity: 0.5, marginBottom: '8px' }}>
+            ==================================================
+          </div>
+
+          <div style={{ marginTop: '12px' }}>
+            <span style={{ display: 'inline-block', width: '80px' }}>TITLE:</span>
+            <span style={{ color: highlightText }}>{title}</span>
+          </div>
+
+          {routeTicket && (
+            <div style={{ marginTop: '4px' }}>
+              <span style={{ display: 'inline-block', width: '80px' }}>CP:</span>
+              {routeTicket.ccpCode} · {routeTicket.competenceCode}
+            </div>
           )}
+
+          <div style={{ marginTop: '20px' }}>
+            <span style={{ fontWeight: 'bold' }}>DESCRIPTION:</span>
+            <br />
+            <div
+              style={{
+                paddingLeft: '12px',
+                borderLeft: `2px solid ${border}`,
+                marginTop: '8px',
+                color: highlightText,
+              }}
+            >
+              {description}
+            </div>
+          </div>
+
+          {selectedTicket?.objectives && (
+            <div style={{ marginTop: '24px' }}>
+              <span style={{ fontWeight: 'bold' }}>OBJECTIVES:</span>
+              <div
+                style={{
+                  marginTop: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                {selectedTicket.objectives.map((obj, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      color: obj.done ? text : highlightText,
+                      textDecoration: obj.done ? 'line-through' : 'none',
+                    }}
+                  >
+                    {obj.done ? '[x]' : '[ ]'} {obj.text}
+                    {obj.active && !obj.done && (
+                      <span
+                        style={{ color: accent, fontSize: '10px', marginLeft: '8px' }}
+                      >
+                        (ACTIVE)
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {renderResolveAction()}
         </div>
       </div>
     );
+  };
+
+  if (incidentId && (routeTicket || selectedTicket)) {
+    return renderRouteDetail();
   }
 
   if (!selectedTicket) {
     return (
-      <div onDragOver={onDragOver} onDrop={(e) => onDrop(e, 'ticket')} style={{ height: '100%', display: 'flex', flexDirection: 'column', background: bg2, outline: isDraggedOver ? '2px dashed #0066ff' : 'none' }}>
-        <div style={{ height: '36px', display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: `1px solid ${border}`, background: bg }}>
-          <span draggable onDragStart={(e) => onDragStart(e, 'ticket')} style={{ fontSize: '12px', fontWeight: 600, color: text, cursor: 'grab' }}>☰ Inbox</span>
+      <div
+        onDragOver={onDragOver}
+        onDrop={(e) => onDrop(e, 'ticket')}
+        style={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          background: bg,
+          outline: isDraggedOver ? `1px solid ${accent}` : 'none',
+          fontFamily: mono,
+        }}
+      >
+        <div
+          style={{
+            height: '30px',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 8px',
+            borderBottom: `1px solid ${border}`,
+            background: headerBg,
+          }}
+        >
+          <span
+            draggable
+            onDragStart={(e) => onDragStart(e, 'ticket')}
+            style={{
+              fontSize: '11px',
+              fontWeight: 'bold',
+              color: highlightText,
+              cursor: 'grab',
+            }}
+          >
+            [=] /var/spool/tickets/inbox
+          </span>
         </div>
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {INBOX_TICKETS.map(ticket => (
-            <div key={ticket.id} onClick={() => { setSelectedTicket(ticket); onStartSession(ticket.id); }} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${border}`, background: bg, cursor: 'pointer' }}>
-              <span style={{ fontSize: '11px', color: '#0066ff', fontWeight: 600 }}>#INC-{ticket.id}</span>
-              <h4 style={{ fontSize: '13px', margin: '4px 0', color: text }}>{ticket.title}</h4>
-              <p style={{ fontSize: '11px', color: text2, margin: 0 }}>{ticket.description}</p>
+
+        <div
+          style={{
+            padding: '8px',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              fontSize: '11px',
+              color: text,
+              paddingBottom: '4px',
+              borderBottom: `1px dashed ${border}`,
+              marginBottom: '4px',
+            }}
+          >
+            <span style={{ width: '40px' }}>ID</span>
+            <span style={{ width: '50px' }}>SEV</span>
+            <span style={{ flex: 1 }}>SUJET</span>
+            <span style={{ width: '80px', textAlign: 'right' }}>CIBLE</span>
+          </div>
+
+          {INBOX_TICKETS.map((ticket) => (
+            <div
+              key={ticket.id}
+              onClick={() => {
+                setSelectedTicket(ticket);
+                onStartSession(ticket.id);
+              }}
+              style={{
+                display: 'flex',
+                fontSize: '11px',
+                color: text,
+                padding: '4px 0',
+                cursor: 'pointer',
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = dark ? '#1a1a1a' : '#e0e0e0';
+                e.currentTarget.style.color = highlightText;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = text;
+              }}
+            >
+              <span style={{ width: '40px' }}>{ticket.id}</span>
+              <span
+                style={{
+                  width: '50px',
+                  color: getSeverityColor(ticket.severity),
+                }}
+              >
+                [{ticket.severity.substring(0, 4).toUpperCase()}]
+              </span>
+              <span
+                style={{
+                  flex: 1,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  paddingRight: '8px',
+                }}
+              >
+                {ticket.title}
+              </span>
+              <span style={{ width: '80px', textAlign: 'right' }}>{ticket.server}</span>
             </div>
           ))}
         </div>
@@ -231,17 +425,138 @@ export default function TicketPanel({
     );
   }
 
-
   return (
-    <div onDragOver={onDragOver} onDrop={(e) => onDrop(e, 'ticket')} style={{ height: '100%', display: 'flex', flexDirection: 'column', background: bg2, outline: isDraggedOver ? '2px dashed #0066ff' : 'none' }}>
-       <div style={{ height: '36px', display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: `1px solid ${border}`, background: bg }}>
-        <button onClick={() => setSelectedTicket(null)} style={{ background: 'none', border: 'none', color: '#0066ff', cursor: 'pointer', fontSize: '12px', padding: '0 8px 0 0' }}>← Retour</button>
-        <span draggable onDragStart={(e) => onDragStart(e, 'ticket')} style={{ fontSize: '12px', fontWeight: 600, color: text, cursor: 'grab' }}>☰ Ticket #{selectedTicket.id}</span>
+    <div
+      onDragOver={onDragOver}
+      onDrop={(e) => onDrop(e, 'ticket')}
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: bg,
+        outline: isDraggedOver ? `1px solid ${accent}` : 'none',
+        fontFamily: mono,
+      }}
+    >
+      <div
+        style={{
+          height: '30px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 8px',
+          borderBottom: `1px solid ${border}`,
+          background: headerBg,
+        }}
+      >
+        <span
+          draggable
+          onDragStart={(e) => onDragStart(e, 'ticket')}
+          style={{
+            fontSize: '11px',
+            fontWeight: 'bold',
+            color: highlightText,
+            cursor: 'grab',
+            flex: 1,
+          }}
+        >
+          [=] less /tickets/INC-{selectedTicket.id}.log
+        </span>
+        <button
+          onClick={() => setSelectedTicket(null)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: accent,
+            cursor: 'pointer',
+            fontSize: '11px',
+            padding: 0,
+          }}
+        >
+          [q] Quit
+        </button>
       </div>
-      {/* ... (Ici tu peux remettre le reste de l'UI du ticket détaillé que j'avais fourni) ... */}
-      <div style={{ padding: '16px' }}>
-         <p style={{ fontSize: '12px', color: text }}>{loading ? 'Préparation de la VM...' : vmHost ? 'VM Prête !' : ''}</p>
-         {incidentId && renderResolveAction()}
+
+      <div
+        style={{
+          padding: '12px',
+          fontSize: '12px',
+          color: text,
+          overflowY: 'auto',
+          lineHeight: '1.6',
+        }}
+      >
+        <div style={{ color: highlightText, opacity: 0.5, marginBottom: '8px' }}>
+          ==================================================
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ color: highlightText, fontWeight: 'bold' }}>
+            INCIDENT #{selectedTicket.id}
+          </span>
+          <span style={{ color: loading ? warnColor : accent, fontWeight: 'bold' }}>
+            STATUS: {loading ? '[ PROVISIONING... ]' : '[ CONNECTED ]'}
+          </span>
+        </div>
+        <div style={{ color: highlightText, opacity: 0.5, marginBottom: '8px' }}>
+          ==================================================
+        </div>
+
+        <div style={{ marginTop: '12px' }}>
+          <span style={{ display: 'inline-block', width: '80px' }}>TARGET:</span>
+          <span style={{ color: highlightText }}>root@{selectedTicket.server}</span>
+          <br />
+          <span style={{ display: 'inline-block', width: '80px' }}>OS:</span>
+          {selectedTicket.os}
+          <br />
+          <span style={{ display: 'inline-block', width: '80px' }}>REPORTER:</span>
+          {selectedTicket.reporter}
+        </div>
+
+        <div style={{ marginTop: '20px' }}>
+          <span style={{ fontWeight: 'bold' }}>DESCRIPTION:</span>
+          <br />
+          <div
+            style={{
+              paddingLeft: '12px',
+              borderLeft: `2px solid ${border}`,
+              marginTop: '8px',
+              color: highlightText,
+            }}
+          >
+            {selectedTicket.description}
+          </div>
+        </div>
+
+        <div style={{ marginTop: '24px' }}>
+          <span style={{ fontWeight: 'bold' }}>OBJECTIVES:</span>
+          <br />
+          <div
+            style={{
+              marginTop: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}
+          >
+            {selectedTicket.objectives.map((obj, i) => (
+              <div
+                key={i}
+                style={{
+                  color: obj.done ? text : highlightText,
+                  textDecoration: obj.done ? 'line-through' : 'none',
+                }}
+              >
+                {obj.done ? '[x]' : '[ ]'} {obj.text}
+                {obj.active && !obj.done && (
+                  <span style={{ color: accent, fontSize: '10px', marginLeft: '8px' }}>
+                    (ACTIVE)
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {incidentId && renderResolveAction()}
       </div>
     </div>
   );
