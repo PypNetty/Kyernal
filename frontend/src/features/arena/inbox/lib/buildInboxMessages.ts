@@ -1,5 +1,7 @@
 import type { FormationProgressionBundle } from '../../skills/data/formationBundleTypes';
 import { getLearnerTickets } from '../../../progress';
+import { MOCK_RESOURCES } from '../../resources/data/resourcesData';
+import { getResourcesForTicket } from '../../resources/lib/getTicketResources';
 import { PRIORITY_CONFIG } from '../../tickets/ticketUi';
 import {
   STATIC_INBOX_MESSAGES,
@@ -17,10 +19,16 @@ function firstSentence(text: string): string {
 function incidentNotificationBody(
   ticket: ReturnType<typeof getLearnerTickets>[number],
 ): string {
+  const resourceCount = getResourcesForTicket(ticket, MOCK_RESOURCES).length;
+  const resourceHint =
+    resourceCount > 0
+      ? ` ${resourceCount} ressource${resourceCount > 1 ? 's' : ''} utile${resourceCount > 1 ? 's' : ''} t'attendent dans Mes tickets et Ressources.`
+      : '';
+
   if (ticket.status === 'en-cours') {
-    return `Tu as une session en cours sur ${ticket.id}. Reprends le diagnostic quand tu es prêt — le scénario complet et les objectifs sont dans Mes tickets.`;
+    return `Tu as une session en cours sur ${ticket.id}. Reprends le diagnostic quand tu es prêt — le scénario complet et les objectifs sont dans Mes tickets.${resourceHint}`;
   }
-  return `Un nouveau ticket vient d'être assigné à ton parcours (${ticket.id}). Consulte-le pour lire le contexte incident et la checklist avant d'ouvrir le lab.`;
+  return `Un nouveau ticket vient d'être assigné à ton parcours (${ticket.id}). Consulte-le pour lire le contexte incident et la checklist avant d'ouvrir le lab.${resourceHint}`;
 }
 
 function inboxTagsForTicket(

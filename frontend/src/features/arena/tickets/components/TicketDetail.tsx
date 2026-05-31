@@ -1,6 +1,14 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
 import type { FormationTicket } from '../../skills/data/formationBundleTypes';
+import {
+  MOCK_RESOURCES,
+  TicketResourcesList,
+  getResourcesForTicket,
+  openResourceUrl,
+  readResourceViews,
+  trackResourceView,
+} from '../../resources';
 import {
   PRIORITY_CONFIG,
   STATUS_CONFIG,
@@ -281,6 +289,21 @@ export default function TicketDetail({
   const description = ticket.description ?? '';
   const objectives = ticket.objectives ?? [];
 
+  const ticketResources = useMemo(
+    () =>
+      isLocked ? [] : getResourcesForTicket(ticket, MOCK_RESOURCES),
+    [ticket, isLocked],
+  );
+
+  const handleOpenResource = useCallback(
+    (resource: (typeof MOCK_RESOURCES)[number]) => {
+      if (!resource.url) return;
+      trackResourceView(resource.id, readResourceViews());
+      openResourceUrl(resource.url);
+    },
+    [],
+  );
+
   const renderBrowseActions = () => {
     if (isLocked) {
       return (
@@ -501,6 +524,12 @@ export default function TicketDetail({
       </p>
 
       <TicketObjectivesList objectives={objectives} theme={theme} />
+
+      <TicketResourcesList
+        resources={ticketResources}
+        theme={theme}
+        onOpen={handleOpenResource}
+      />
 
       {mode === 'browse' ? renderBrowseActions() : renderSessionActions()}
     </div>
