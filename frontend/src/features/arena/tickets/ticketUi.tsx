@@ -4,6 +4,9 @@ import type { FormationTicket } from '../skills/data/formationBundleTypes';
 export type TicketStatus = FormationTicket['status'];
 export type TicketPriority = FormationTicket['priority'];
 
+export const DEFAULT_TICKET_DESCRIPTION =
+  'Ouvre le lab pour diagnostiquer et corriger cet incident.';
+
 export interface TicketTheme {
   bg: string;
   bgDetail: string;

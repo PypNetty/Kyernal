@@ -8,6 +8,7 @@ import {
   type NodeStatus,
   type SkillNode,
 } from '../../arena/skills/data/progressionConfig';
+import { DEFAULT_TICKET_DESCRIPTION } from '../../arena/tickets/ticketUi';
 
 export type LearnerPhase = 'new' | 'in-progress' | 'continue' | 'complete';
 
@@ -110,7 +111,14 @@ export function getLearnerTickets(
     if (!node) return [];
 
     const nodeStatus = computeNodeStatus(node.id, progress, edges);
-    return [{ ...ticket, status: nodeStatusToTicketStatus(nodeStatus) }];
+    return [
+      {
+        ...ticket,
+        status: nodeStatusToTicketStatus(nodeStatus),
+        description:
+          ticket.description ?? node.description ?? DEFAULT_TICKET_DESCRIPTION,
+      },
+    ];
   });
 }
 
