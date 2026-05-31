@@ -32,7 +32,7 @@ function findNodeById(
   return node;
 }
 
-function nodeStatusToTicketStatus(
+export function nodeStatusToTicketStatus(
   nodeStatus: NodeStatus,
 ): FormationTicket['status'] {
   switch (nodeStatus) {
@@ -82,6 +82,22 @@ export function countTotalIncidentNodes(
   bundle: FormationProgressionBundle,
 ): number {
   return bundle.nodes.filter((n) => n.incidentId).length;
+}
+
+export function getTicketStatusByRouteId(
+  bundle: FormationProgressionBundle,
+  routeIncidentId: string,
+): FormationTicket['status'] | 'unknown' {
+  const fullId = routeIncidentId.startsWith('INC-')
+    ? routeIncidentId
+    : `INC-${routeIncidentId}`;
+  const node = bundle.nodes.find((n) => n.incidentId === fullId);
+  if (!node) return 'unknown';
+
+  const nodeStatus = computeNodeStatus(node.id, bundle.progress, bundle.edges);
+  if (nodeStatus === 'locked') return 'unknown';
+
+  return nodeStatusToTicketStatus(nodeStatus);
 }
 
 export function getLearnerTickets(

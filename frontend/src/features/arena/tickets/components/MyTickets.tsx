@@ -422,7 +422,7 @@ function TicketRow({
 
 // --- PAGE PRINCIPALE ---
 export default function MyTickets() {
-  const { dark, startSession } = useContext(LayoutCtx);
+  const { dark } = useContext(LayoutCtx);
   const navigate = useNavigate();
   const bundle = useFormationBundle();
   const showReferential = Boolean(bundle.referential);
@@ -440,8 +440,7 @@ export default function MyTickets() {
     annule: tickets.filter((t) => t.status === 'annule'),
   };
 
-  const handleTicketClick = async (ticket: FormationTicket) => {
-    await startSession(ticket.incidentId);
+  const handleTicketClick = (ticket: FormationTicket) => {
     navigate({ href: `/tickets/${ticket.incidentId}` });
   };
 
