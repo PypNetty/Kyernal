@@ -134,6 +134,20 @@ export const TSSR_COMPETENCES_TRANSVERSALES = [
   'Apprendre en continu',
 ] as const;
 
+const TSSR_COMPETENCE_BY_NUMBER = new Map(
+  TSSR_COMPETENCES.map((c) => [c.number, c]),
+);
+
+export function getTssrCompetenceByNumber(
+  number: number,
+): TssrCompetenceProfessionnelle {
+  const competence = TSSR_COMPETENCE_BY_NUMBER.get(number);
+  if (!competence) {
+    throw new Error(`Unknown TSSR competence number: ${number}`);
+  }
+  return competence;
+}
+
 export function getTssrCompetenceByCode(
   code: TssrCompetenceCode,
 ): TssrCompetenceProfessionnelle | undefined {

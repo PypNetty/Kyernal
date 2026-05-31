@@ -30,6 +30,10 @@ import {
   SkillEdge,
 } from '../data/progressionConfig';
 
+function nodeCompetenceLabel(node: SkillNode): string {
+  return node.competenceCode ?? node.domain.toUpperCase();
+}
+
 // ── COULEURS STATUT ────────────────────────────────────────────────────────
 const STATUS_STYLE: Record<
   NodeStatus,
@@ -110,7 +114,7 @@ function SkillNodeComponent({ data }: NodeProps) {
             letterSpacing: '0.5px',
           }}
         >
-          {node.competenceCode ?? node.domain.toUpperCase()}
+          {nodeCompetenceLabel(node)}
         </span>
         <span style={{ fontSize: '12px' }}>{STATUS_ICON[status]}</span>
       </div>
@@ -656,7 +660,7 @@ export default function SkillTreePanel() {
                           letterSpacing: '0.5px',
                         }}
                       >
-                        {node.domain.toUpperCase()}
+                        {nodeCompetenceLabel(node)}
                       </span>
                       <button
                         onClick={() => setSelectedNode(null)}

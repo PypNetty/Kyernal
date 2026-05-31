@@ -3,8 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import KyernalLogo from '../../landing/components/KyernalLogo';
 import { THEMES } from '../../landing/theme/landingTheme';
 import { FORMATIONS } from '../data/formations';
-import { hasDedicatedProgression } from '../../arena/skills/data/formationProgression';
-import { TSSR_COMPETENCES, TSSR_REFERENTIAL_META } from '../data/tssrReferential';
+import { hasDedicatedProgression, TSSR_COMPETENCES, TSSR_REFERENTIAL_META } from '../../formations';
 import { useAuth } from '../hooks/useAuth';
 import { useSelectFormation } from '../hooks/useSelectFormation';
 
