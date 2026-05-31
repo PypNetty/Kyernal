@@ -1,4 +1,4 @@
-import { ensureLearnerProgress } from '../../arena/skills/lib/learnerProgressStorage';
+import { ensureLearnerProgress } from '../../progress';
 import {
   clearStoredSession,
   getStoredPassword,

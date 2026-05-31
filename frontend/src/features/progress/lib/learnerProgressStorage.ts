@@ -1,4 +1,4 @@
-import type { LearnerProgress } from '../data/progressionConfig';
+import type { LearnerProgress } from '../../arena/skills/data/progressionConfig';
 
 const STORAGE_PREFIX = 'kyernal.progress';
 

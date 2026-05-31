@@ -1,8 +1,11 @@
 import { useMemo } from 'react';
 import { useAuth } from '../../../auth';
-import { getFormationProgression } from '../data/formationProgression';
+import {
+  deriveFormationCcps,
+  getFormationProgression,
+} from '../data/formationProgression';
 import type { FormationProgressionBundle } from '../data/formationBundleTypes';
-import { getLearnerProgress } from '../lib/learnerProgressStorage';
+import { getLearnerProgress } from '../../../progress';
 
 export function useFormationBundle(): FormationProgressionBundle {
   const { data: session } = useAuth();
@@ -11,12 +14,15 @@ export function useFormationBundle(): FormationProgressionBundle {
     const base = getFormationProgression(session?.formationId);
 
     if (!session?.email || !session.formationId) {
-      return { ...base, mockProgress: [] };
+      return { ...base, progress: [], ccps: deriveFormationCcps(base, []) };
     }
 
-    const stored = getLearnerProgress(session.email, session.formationId);
-    const mockProgress = stored ?? [];
+    const progress = getLearnerProgress(session.email, session.formationId) ?? [];
 
-    return { ...base, mockProgress };
+    return {
+      ...base,
+      progress,
+      ccps: deriveFormationCcps(base, progress),
+    };
   }, [session?.email, session?.formationId]);
 }

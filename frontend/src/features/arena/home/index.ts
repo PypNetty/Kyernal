@@ -10,6 +10,7 @@ export {
 export type {
   HomeLearnerState,
   LastSession,
+  NextIncident,
   ProgressSnapshot,
   RecommendedIncident,
 } from './data/homeData';

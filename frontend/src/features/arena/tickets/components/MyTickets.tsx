@@ -4,6 +4,7 @@ import { useContext } from 'react';
 import { LayoutCtx } from '../../layout/components/Layout';
 import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
 import type { FormationTicket } from '../../skills/data/formationBundleTypes';
+import { getLearnerTickets } from '../../../progress';
 
 // --- TYPES ---
 type TicketStatus = FormationTicket['status'];
@@ -425,7 +426,7 @@ export default function MyTickets() {
   const navigate = useNavigate();
   const bundle = useFormationBundle();
   const showReferential = Boolean(bundle.referential);
-  const tickets = bundle.tickets;
+  const tickets = getLearnerTickets(bundle);
 
   const border = dark ? '#1f1f1f' : '#e8e8e5';
   const bg = dark ? '#0e0f11' : '#f7f7f9';
@@ -540,34 +541,50 @@ export default function MyTickets() {
 
       {/* Liste groupée */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <TicketGroup
-          status="en-cours"
-          tickets={grouped['en-cours']}
-          dark={dark}
-          showReferential={showReferential}
-          onTicketClick={handleTicketClick}
-        />
-        <TicketGroup
-          status="a-faire"
-          tickets={grouped['a-faire']}
-          dark={dark}
-          showReferential={showReferential}
-          onTicketClick={handleTicketClick}
-        />
-        <TicketGroup
-          status="resolu"
-          tickets={grouped['resolu']}
-          dark={dark}
-          showReferential={showReferential}
-          onTicketClick={handleTicketClick}
-        />
-        <TicketGroup
-          status="annule"
-          tickets={grouped['annule']}
-          dark={dark}
-          showReferential={showReferential}
-          onTicketClick={handleTicketClick}
-        />
+        {tickets.length === 0 ? (
+          <div
+            style={{
+              padding: '32px 16px',
+              textAlign: 'center',
+              fontSize: '13px',
+              color: textMuted,
+              lineHeight: 1.55,
+            }}
+          >
+            Aucun ticket disponible pour le moment.
+          </div>
+        ) : (
+          <>
+            <TicketGroup
+              status="en-cours"
+              tickets={grouped['en-cours']}
+              dark={dark}
+              showReferential={showReferential}
+              onTicketClick={handleTicketClick}
+            />
+            <TicketGroup
+              status="a-faire"
+              tickets={grouped['a-faire']}
+              dark={dark}
+              showReferential={showReferential}
+              onTicketClick={handleTicketClick}
+            />
+            <TicketGroup
+              status="resolu"
+              tickets={grouped['resolu']}
+              dark={dark}
+              showReferential={showReferential}
+              onTicketClick={handleTicketClick}
+            />
+            <TicketGroup
+              status="annule"
+              tickets={grouped['annule']}
+              dark={dark}
+              showReferential={showReferential}
+              onTicketClick={handleTicketClick}
+            />
+          </>
+        )}
       </div>
     </div>
   );

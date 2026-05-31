@@ -40,6 +40,6 @@ export interface FormationProgressionBundle {
   edges: SkillEdge[];
   tickets: FormationTicket[];
   ccps: FormationCcp[];
-  mockProgress: LearnerProgress[];
+  progress: LearnerProgress[];
   referential?: FormationReferentialMeta;
 }

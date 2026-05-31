@@ -14,6 +14,7 @@ import type {
   SkillEdge,
   SkillNode,
 } from './progressionConfig';
+import { computeNodeStatus } from './progressionConfig';
 
 const CCP_COLORS: Record<'CCP1' | 'CCP2', string> = {
   CCP1: '#0055e5',
@@ -273,20 +274,21 @@ function isCompetenceValidated(
   competenceCode: string,
   nodes: SkillNode[],
   progress: LearnerProgress[],
+  edges: SkillEdge[],
 ): boolean {
   const nodeIds = nodes
     .filter((node) => node.competenceCode === competenceCode)
     .map((node) => node.id);
 
   return nodeIds.some(
-    (nodeId) =>
-      progress.find((entry) => entry.nodeId === nodeId)?.status === 'completed',
+    (nodeId) => computeNodeStatus(nodeId, progress, edges) === 'completed',
   );
 }
 
-function buildFormationCcps(
+export function buildTssrFormationCcps(
   nodes: SkillNode[],
   progress: LearnerProgress[],
+  edges: SkillEdge[],
 ): FormationCcp[] {
   return TSSR_CCPS.map((ccp) => ({
     id: ccp.code.toLowerCase(),
@@ -301,25 +303,20 @@ function buildFormationCcps(
         id: ref.code.toLowerCase(),
         code: ref.code,
         label: ref.label,
-        validated: isCompetenceValidated(ref.code, nodes, progress),
+        validated: isCompetenceValidated(ref.code, nodes, progress, edges),
         ticketIds: tickets.map((t) => t.id),
       };
     }),
   }));
 }
 
-export const TSSR_FORMATION_CCPS = buildFormationCcps(
-  TSSR_SKILL_NODES,
-  TSSR_MOCK_PROGRESS,
-);
-
 export const TSSR_PROGRESSION_BUNDLE: FormationProgressionBundle = {
   formationId: 'tssr',
   nodes: TSSR_SKILL_NODES,
   edges: TSSR_SKILL_EDGES,
   tickets: [...TSSR_TICKETS],
-  ccps: TSSR_FORMATION_CCPS,
-  mockProgress: TSSR_MOCK_PROGRESS,
+  ccps: buildTssrFormationCcps(TSSR_SKILL_NODES, [], TSSR_SKILL_EDGES),
+  progress: [],
   referential: {
     badge: `${TSSR_REFERENTIAL_META.sigle} · millésime ${TSSR_REFERENTIAL_META.millesime}`,
     treeLabel: `REAC ${TSSR_REFERENTIAL_META.sigle} 2023`,
