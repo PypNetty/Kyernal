@@ -3,22 +3,23 @@ import {
   computeNodeStatus,
   getCurrentLevel,
   getTotalXp,
+  type LearnerProgress,
   type NodeDomain,
   type NodeStatus,
   type SkillNode,
 } from '../../skills/data/progressionConfig';
 
-export const AUTONOMY_SCORE = 74;
+export type HomeLearnerState = 'new' | 'in-progress' | 'continue' | 'complete';
 
 export interface LastSession {
   incidentId: string;
   ticketRouteId: string;
   title: string;
   domain: NodeDomain;
-  lastActive: string;
   hintsUsed: number;
-  progressPercent: number;
-  vmActive: boolean;
+  lastActive?: string;
+  progressPercent?: number;
+  vmActive?: boolean;
 }
 
 export interface RecommendedIncident {
@@ -27,6 +28,7 @@ export interface RecommendedIncident {
   ticketRouteId: string;
   reason: string;
   status: NodeStatus;
+  isFirstLab?: boolean;
 }
 
 export interface ProgressSnapshot {
@@ -54,6 +56,58 @@ function findNodeById(
   return node;
 }
 
+function isNewLearner(progress: LearnerProgress[]): boolean {
+  return (
+    !progress.some((p) => p.status === 'in-progress') &&
+    !progress.some((p) => p.status === 'completed')
+  );
+}
+
+function toRecommendedIncident(
+  bundle: FormationProgressionBundle,
+  node: SkillNode,
+  reason: string,
+  status: NodeStatus,
+  options?: { isFirstLab?: boolean },
+): RecommendedIncident | null {
+  if (!node.incidentId) return null;
+  return {
+    node,
+    incidentId: node.incidentId,
+    ticketRouteId: incidentRouteId(node.incidentId),
+    reason,
+    status,
+    isFirstLab: options?.isFirstLab,
+  };
+}
+
+function getFirstAvailableIncident(
+  bundle: FormationProgressionBundle,
+): RecommendedIncident | null {
+  const { nodes, edges, mockProgress: progress } = bundle;
+  const withIncident = nodes.filter((n) => n.incidentId);
+  const available = withIncident.filter(
+    (n) => computeNodeStatus(n.id, progress, edges) === 'available',
+  );
+  if (available.length === 0) return null;
+
+  const entryIds = new Set(
+    withIncident
+      .filter((n) => !edges.some((e) => e.target === n.id))
+      .map((n) => n.id),
+  );
+  const pick = available.find((n) => entryIds.has(n.id)) ?? available[0];
+  const firstLab = isNewLearner(progress);
+
+  return toRecommendedIncident(
+    bundle,
+    pick,
+    firstLab ? 'Premier lab · prêt à démarrer' : 'Prêt à démarrer',
+    'available',
+    { isFirstLab: firstLab },
+  );
+}
+
 export function getLastSession(
   bundle: FormationProgressionBundle,
 ): LastSession | null {
@@ -68,17 +122,14 @@ export function getLastSession(
     ticketRouteId: incidentRouteId(node.incidentId),
     title: node.title,
     domain: node.domain,
-    lastActive: "Aujourd'hui, 09:42",
     hintsUsed: inProgress.hintsUsed ?? 0,
-    progressPercent: 62,
-    vmActive: true,
   };
 }
 
 export function getRecommendedIncident(
   bundle: FormationProgressionBundle,
 ): RecommendedIncident | null {
-  const { nodes, edges, mockProgress: progress } = bundle;
+  const { edges, mockProgress: progress } = bundle;
   const inProgressNodeId = progress.find(
     (p) => p.status === 'in-progress',
   )?.nodeId;
@@ -86,14 +137,12 @@ export function getRecommendedIncident(
   const available = progress.filter((p) => p.status === 'available');
   if (available.length > 0) {
     const node = findNodeById(bundle, available[0].nodeId);
-    if (!node.incidentId) return null;
-    return {
+    return toRecommendedIncident(
+      bundle,
       node,
-      incidentId: node.incidentId,
-      ticketRouteId: incidentRouteId(node.incidentId),
-      reason: 'Branche parallèle · prérequis validés',
-      status: 'available',
-    };
+      'Branche parallèle · prérequis validés',
+      'available',
+    );
   }
 
   if (inProgressNodeId) {
@@ -105,20 +154,40 @@ export function getRecommendedIncident(
       const status = computeNodeStatus(targetId, progress, edges);
       if (status === 'locked' || status === 'available') {
         const node = findNodeById(bundle, targetId);
-        if (!node.incidentId) continue;
         const current = findNodeById(bundle, inProgressNodeId);
-        return {
+        const incident = toRecommendedIncident(
+          bundle,
           node,
-          incidentId: node.incidentId,
-          ticketRouteId: incidentRouteId(node.incidentId),
-          reason: `Prochaine étape après « ${current.title} »`,
+          `Prochaine étape après « ${current.title} »`,
           status,
-        };
+        );
+        if (incident) return incident;
       }
     }
   }
 
-  return null;
+  return getFirstAvailableIncident(bundle);
+}
+
+export function getHomeLearnerState(
+  lastSession: LastSession | null,
+  recommended: RecommendedIncident | null,
+): HomeLearnerState {
+  if (lastSession) return 'in-progress';
+  if (recommended?.isFirstLab) return 'new';
+  if (recommended) return 'continue';
+  return 'complete';
+}
+
+export function computeAutonomyScore(
+  progress: LearnerProgress[],
+): number | null {
+  const completed = progress.filter((p) => p.status === 'completed');
+  if (completed.length === 0) return null;
+
+  const totalHints = completed.reduce((s, p) => s + (p.hintsUsed ?? 0), 0);
+  const avgHints = totalHints / completed.length;
+  return Math.round(Math.max(40, Math.min(100, 100 - avgHints * 12)));
 }
 
 export function getProgressSnapshot(
@@ -133,6 +202,7 @@ export function getProgressSnapshot(
     ? findNodeById(bundle, inProgress.nodeId).title
     : null;
 
+  const labNodes = nodes.filter((n) => n.incidentId);
   const domains: NodeDomain[] = ['linux', 'web', 'reseau', 'securite', 'cloud'];
   const domainProgress = domains.map((domain) => {
     const domainNodes = nodes.filter((n) => n.domain === domain);
@@ -150,7 +220,7 @@ export function getProgressSnapshot(
     xpInLevel: totalXp - level.min,
     xpToNext: level.max - level.min + 1,
     completedLabs,
-    totalLabs: nodes.length,
+    totalLabs: labNodes.length,
     inProgressLab,
     domainProgress: domainProgress.filter((d) => d.total > 0),
   };

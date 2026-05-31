@@ -1,3 +1,4 @@
+import { ensureLearnerProgress } from '../../arena/skills/lib/learnerProgressStorage';
 import {
   clearStoredSession,
   getStoredPassword,
@@ -121,6 +122,7 @@ export async function selectFormation(
   };
 
   setStoredSession(updated);
+  ensureLearnerProgress(updated.email, formation.id);
   return updated;
 }
 
@@ -158,6 +160,7 @@ export async function updateProfile(
   };
 
   setStoredSession(updated);
+  ensureLearnerProgress(updated.email, formation.id);
   return updated;
 }
 

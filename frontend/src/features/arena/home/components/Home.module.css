@@ -481,6 +481,33 @@
   color: var(--text);
 }
 
+.workspaceLink {
+  margin-top: 20px;
+}
+
+.workspaceLinkAnchor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.16s;
+}
+
+.workspaceLinkAnchor:hover {
+  color: var(--accent);
+}
+
+.workspaceLinkAnchor svg {
+  transition: transform 0.16s;
+}
+
+.workspaceLinkAnchor:hover svg {
+  transform: translateX(2px);
+}
+
 .emptyFocal {
   composes: focal;
   text-align: center;
