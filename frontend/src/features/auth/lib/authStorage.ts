@@ -79,9 +79,17 @@ export function getStoredSession(): AuthSession | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AuthSession;
-    if (!parsed?.token || !parsed?.user?.name) return null;
+    if (!parsed?.token || !parsed?.user?.name || !parsed?.email) {
+      clearStoredSession();
+      return null;
+    }
+    if (getStoredPassword(parsed.email) === null) {
+      clearStoredSession();
+      return null;
+    }
     return normalizeStoredSession(parsed);
   } catch {
+    clearStoredSession();
     return null;
   }
 }

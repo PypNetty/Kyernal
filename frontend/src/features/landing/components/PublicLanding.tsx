@@ -127,19 +127,10 @@ function Hero({ isLoggedIn }: { isLoggedIn: boolean }) {
       </p>
 
       <div className={styles.ctaRow}>
-        {isLoggedIn ? (
+        {isLoggedIn && (
           <Link to="/home" className={`${styles.btnPrimary} ${styles.ctaBtn}`}>
             Tableau de bord
           </Link>
-        ) : (
-          <>
-            <Link to="/signup" className={`${styles.btnPrimary} ${styles.ctaBtn}`}>
-              Créer un compte
-            </Link>
-            <Link to="/login" className={`${styles.btnSecondary} ${styles.ctaBtn}`}>
-              Se connecter
-            </Link>
-          </>
         )}
         <a href="#demo" className={`${styles.btnSecondary} ${styles.ctaBtn}`}>
           Voir la démo
