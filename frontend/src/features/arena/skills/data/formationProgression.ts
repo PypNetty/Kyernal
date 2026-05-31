@@ -1,14 +1,34 @@
-import type { FormationProgressionBundle } from './formationBundleTypes';
+import type { FormationCcp, FormationProgressionBundle } from './formationBundleTypes';
 import { DEDICATED_FORMATION_IDS } from '../../../formations/registry';
-import { TSSR_PROGRESSION_BUNDLE } from './tssrProgression';
+import { buildTssrFormationCcps, TSSR_PROGRESSION_BUNDLE } from './tssrProgression';
 import type { LearnerProgress, SkillEdge, SkillNode } from './progressionConfig';
-import {
-  MOCK_PROGRESS,
-  SKILL_EDGES,
-  SKILL_NODES,
-} from './progressionConfig';
+import { computeNodeStatus, SKILL_EDGES, SKILL_NODES } from './progressionConfig';
 
 const GENERIC_FORMATION_ID = 'generic';
+
+export function buildGenericFormationCcps(
+  nodes: SkillNode[],
+  edges: SkillEdge[],
+  progress: LearnerProgress[],
+): FormationCcp[] {
+  return [
+    {
+      id: 'parcours',
+      code: 'Parcours',
+      title: 'Labs Linux, web, réseau et sécurité',
+      description:
+        'Parcours générique en attendant un référentiel officiel pour cette formation.',
+      color: '#4d8fff',
+      competences: nodes.map((n) => ({
+        id: n.id,
+        code: n.domain,
+        label: n.title,
+        validated: computeNodeStatus(n.id, progress, edges) === 'completed',
+        ticketIds: n.incidentId ? [n.incidentId] : [],
+      })),
+    },
+  ];
+}
 
 function buildGenericBundle(): FormationProgressionBundle {
   const tickets = SKILL_NODES.filter((n) => n.incidentId).map((n) => ({
@@ -27,25 +47,8 @@ function buildGenericBundle(): FormationProgressionBundle {
     nodes: SKILL_NODES,
     edges: SKILL_EDGES,
     tickets,
-    ccps: [
-      {
-        id: 'parcours',
-        code: 'Parcours',
-        title: 'Labs Linux, web, réseau et sécurité',
-        description:
-          'Parcours générique en attendant un référentiel officiel pour cette formation.',
-        color: '#4d8fff',
-        competences: SKILL_NODES.map((n) => ({
-          id: n.id,
-          code: n.domain,
-          label: n.title,
-          validated:
-            MOCK_PROGRESS.find((p) => p.nodeId === n.id)?.status === 'completed',
-          ticketIds: n.incidentId ? [n.incidentId] : [],
-        })),
-      },
-    ],
-    mockProgress: MOCK_PROGRESS,
+    ccps: buildGenericFormationCcps(SKILL_NODES, SKILL_EDGES, []),
+    progress: [],
   };
 }
 
@@ -68,4 +71,14 @@ export function getFormationProgression(
     return BY_FORMATION[formationId];
   }
   return GENERIC_BUNDLE;
+}
+
+export function deriveFormationCcps(
+  base: FormationProgressionBundle,
+  progress: LearnerProgress[],
+): FormationCcp[] {
+  if (base.formationId === 'tssr') {
+    return buildTssrFormationCcps(base.nodes, progress, base.edges);
+  }
+  return buildGenericFormationCcps(base.nodes, base.edges, progress);
 }

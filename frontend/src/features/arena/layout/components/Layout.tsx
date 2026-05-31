@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Outlet, useRouterState } from '@tanstack/react-router';
 import { useAuth } from '../../../auth';
 import { usePresenceSync } from '../../../auth/hooks/usePresenceSync';
+import {
+  getLearnerProgress,
+  getTicketStatusByRouteId,
+  markTicketResolved,
+  markTicketStarted,
+} from '../../../progress';
+import { getFormationProgression } from '../../skills/data/formationProgression';
 import { UserProfile } from '../context/types';
 import { useAppTheme } from '../context/AppTheme';
 import Sidebar from './Sidebar';
@@ -212,6 +219,7 @@ export interface LayoutContext {
   vmId: number | undefined;
   loading: boolean;
   startSession: (incidentId: string) => Promise<void>;
+  resolveTicket: (incidentId: string) => Promise<boolean>;
   stopSession: () => Promise<void>;
   deleteSession: () => Promise<void>;
   showTerminal: boolean;
@@ -231,6 +239,9 @@ export default function Layout() {
   const [vertical, setVertical] = React.useState(false);
   const [vmHost, setVmHost] = useState<string | undefined>(undefined);
   const [vmId, setVmId] = useState<number | undefined>(undefined);
+  const [activeIncidentId, setActiveIncidentId] = useState<string | undefined>(
+    undefined,
+  );
   const [loading, setLoading] = useState(false);
   const [showTerminal, setShowTerminal] = useState(true);
   const [showTicket, setShowTicket] = useState(true);
@@ -250,48 +261,114 @@ export default function Layout() {
   const text = dark ? '#f4f4f5' : '#09090b';
   const textMuted = dark ? '#71717a' : '#71717a';
 
-  const startSession = async (incidentId: string) => {
-    setLoading(true);
-    setVmHost(undefined);
-    try {
-      const res = await fetch(
-        `http://127.0.0.1:8080/arena/start?incident=${incidentId}`,
-        { method: 'POST' },
-      );
-      const data = await res.json();
-      setVmHost(data.vmIP);
-      setVmId(data.vmID);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const progressionBundle = useCallback(() => {
+    const base = getFormationProgression(session?.formationId);
+    const progress =
+      session?.email && session.formationId
+        ? (getLearnerProgress(session.email, session.formationId) ?? [])
+        : [];
 
-  const stopSession = async () => {
+    return { ...base, progress };
+  }, [session?.email, session?.formationId]);
+
+  const startSession = useCallback(
+    async (incidentId: string) => {
+      const bundle = progressionBundle();
+      const ticketStatus = getTicketStatusByRouteId(bundle, incidentId);
+      if (ticketStatus === 'verrouille' || ticketStatus === 'unknown') {
+        return;
+      }
+
+      if (session?.email && session.formationId) {
+        markTicketStarted(
+          session.email,
+          session.formationId,
+          incidentId,
+          bundle,
+        );
+      }
+
+      if (activeIncidentId === incidentId && vmHost) {
+        return;
+      }
+
+      setActiveIncidentId(incidentId);
+      setLoading(true);
+      setVmHost(undefined);
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:8080/arena/start?incident=${incidentId}`,
+          { method: 'POST' },
+        );
+        const data = await res.json();
+        setVmHost(data.vmIP);
+        setVmId(data.vmID);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      activeIncidentId,
+      progressionBundle,
+      session?.email,
+      session?.formationId,
+      vmHost,
+    ],
+  );
+
+  const stopSession = useCallback(async () => {
     if (!vmId) return;
     try {
-      await fetch(`http://127.0.0.1:8080/arena/stop?id=${vmId}`, {
+      await fetch(`http://127.0.0.1:8080/arena/stop?vmid=${vmId}`, {
         method: 'POST',
       });
       setVmHost(undefined);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [vmId]);
 
-  const deleteSession = async () => {
+  const resolveTicket = useCallback(
+    async (incidentId: string): Promise<boolean> => {
+      if (!session?.email || !session.formationId) return false;
+
+      const bundle = progressionBundle();
+      markTicketStarted(session.email, session.formationId, incidentId, bundle);
+
+      const freshBundle = {
+        ...bundle,
+        progress:
+          getLearnerProgress(session.email, session.formationId) ?? [],
+      };
+      const updated = markTicketResolved(
+        session.email,
+        session.formationId,
+        incidentId,
+        freshBundle,
+      );
+
+      await stopSession();
+      setActiveIncidentId(undefined);
+      return updated !== null;
+    },
+    [progressionBundle, session?.email, session?.formationId, stopSession],
+  );
+
+  const deleteSession = useCallback(async () => {
     if (!vmId) return;
     try {
-      await fetch(`http://127.0.0.1:8080/arena/delete?id=${vmId}`, {
+      await fetch(`http://127.0.0.1:8080/arena/delete?vmid=${vmId}`, {
         method: 'DELETE',
       });
       setVmHost(undefined);
       setVmId(undefined);
+      setActiveIncidentId(undefined);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [vmId]);
 
   const renderPanelToggle = (
     label: string,
@@ -347,6 +424,7 @@ export default function Layout() {
         vmId,
         loading,
         startSession,
+        resolveTicket,
         stopSession,
         deleteSession,
         showTerminal,

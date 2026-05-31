@@ -6,6 +6,10 @@ export interface FormationReferentialMeta {
   transversalLabels?: readonly string[];
 }
 
+export interface TicketObjective {
+  text: string;
+}
+
 export interface FormationTicket {
   id: string;
   incidentId: string;
@@ -13,8 +17,10 @@ export interface FormationTicket {
   competenceCode: string;
   ccpCode: string;
   priority: 'urgent' | 'haute' | 'moyenne' | 'basse';
-  status: 'en-cours' | 'a-faire' | 'resolu' | 'annule';
+  status: 'en-cours' | 'a-faire' | 'resolu' | 'annule' | 'verrouille';
   updatedAt: string;
+  description?: string;
+  objectives?: TicketObjective[];
 }
 
 export interface FormationCompetenceItem {
@@ -40,6 +46,6 @@ export interface FormationProgressionBundle {
   edges: SkillEdge[];
   tickets: FormationTicket[];
   ccps: FormationCcp[];
-  mockProgress: LearnerProgress[];
+  progress: LearnerProgress[];
   referential?: FormationReferentialMeta;
 }

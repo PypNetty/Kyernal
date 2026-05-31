@@ -4,6 +4,7 @@ import {
   createRootRoute,
   Outlet,
   redirect,
+  useParams,
 } from '@tanstack/react-router';
 import React, { useContext } from 'react';
 import { Allotment } from 'allotment';
@@ -46,8 +47,15 @@ function MyTicketsPage() {
 }
 
 function TicketDetailPage() {
-  const { dark, vmHost, loading, startSession, vertical } =
+  const { incidentId } = useParams({ strict: false }) as { incidentId: string };
+  const { dark, vmHost, loading, startSession, resolveTicket, vertical } =
     useContext(LayoutCtx);
+
+  React.useEffect(() => {
+    if (incidentId) {
+      void startSession(incidentId);
+    }
+  }, [incidentId]);
 
   const [draggedOver, setDraggedOver] = React.useState<
     'term' | 'ticket' | null
@@ -84,12 +92,14 @@ function TicketDetailPage() {
   const ticketPanel = (
     <TicketPanel
       {...panelProps}
+      incidentId={incidentId}
       isDraggedOver={draggedOver === 'ticket'}
       onDragOver={(e) => {
         e.preventDefault();
         setDraggedOver('ticket');
       }}
       onStartSession={startSession}
+      onResolveTicket={resolveTicket}
       loading={loading}
     />
   );
@@ -169,7 +179,7 @@ function requireAuthWithFormation({
   if (!hasSelectedFormation(session)) {
     throw redirect({
       to: '/formation',
-      search: { redirect: safeRedirect },
+      search: { redirect: safeRedirect, change: false },
     });
   }
 }
@@ -218,6 +228,17 @@ const loginRoute = createRoute({
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: parseAuthRedirect(search),
   }),
+  beforeLoad: ({ search }) => {
+    const session = getStoredSession();
+    if (!session) return;
+    if (hasSelectedFormation(session)) {
+      throw redirect({ to: search.redirect });
+    }
+    throw redirect({
+      to: '/formation',
+      search: { redirect: search.redirect, change: false },
+    });
+  },
   component: LoginPage,
 });
 
@@ -227,6 +248,17 @@ const signupRoute = createRoute({
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: parseAuthRedirect(search),
   }),
+  beforeLoad: ({ search }) => {
+    const session = getStoredSession();
+    if (!session) return;
+    if (hasSelectedFormation(session)) {
+      throw redirect({ to: search.redirect });
+    }
+    throw redirect({
+      to: '/formation',
+      search: { redirect: search.redirect, change: false },
+    });
+  },
   component: SignupPage,
 });
 
