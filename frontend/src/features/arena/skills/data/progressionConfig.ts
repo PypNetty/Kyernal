@@ -23,6 +23,9 @@ export interface SkillNode {
   badge?: string; // badge débloqué si présent
   docsId?: string; // lien vers une fiche DocsPanel
   position: { x: number; y: number }; // position sur le canvas
+  /** Référentiel TSSR (CP1–CP9) */
+  competenceCode?: string;
+  ccpCode?: 'CCP1' | 'CCP2';
 }
 
 export interface SkillEdge {

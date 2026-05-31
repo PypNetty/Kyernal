@@ -118,9 +118,10 @@ function FocalRecommendedCard({ incident }: { incident: RecommendedIncident }) {
 
 export default function HomePanel() {
   const { data: session } = useAuth();
-  const lastSession = getLastSession();
-  const recommended = getRecommendedIncident();
-  const snapshot = getProgressSnapshot();
+  const formationId = session?.formationId;
+  const lastSession = getLastSession(formationId);
+  const recommended = getRecommendedIncident(formationId);
+  const snapshot = getProgressSnapshot(formationId);
 
   const firstName = session?.user?.name?.split(' ')[0] ?? 'Apprenant';
   const xpPercent = Math.min(
