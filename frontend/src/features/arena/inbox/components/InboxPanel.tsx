@@ -1,44 +1,228 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import {
-  INBOX_FILTERS,
-  MOCK_MESSAGES,
+  INBOX_FILTER_TABS,
+  MESSAGE_TYPE_CONFIG,
+  incidentIdToRouteId,
   tagColor,
+  type InboxFilter,
+} from '../data/inboxConfig';
+import {
+  MOCK_MESSAGES,
   type InboxMessage,
   type MessageType,
 } from '../data/inboxData';
 
-const IconIncident = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" /></svg>;
-const IconFormateur = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;
-const IconSystem = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>;
-const IconFilter = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>;
-const IconTrash = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-    <path d="M10 11v6M14 11v6" />
-    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-  </svg>
-);
-const IconTag = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>;
+function renderBody(
+  body: string,
+  dark: boolean,
+  textMain: string,
+  textMuted: string,
+) {
+  return body.split('\n').map((line, i) => {
+    if (line === '') {
+      return <div key={i} style={{ height: '8px' }} />;
+    }
+
+    const parts = line.split(/\*\*(.*?)\*\*/g).map((part, j) =>
+      j % 2 === 1 ? (
+        <strong key={j} style={{ color: textMain, fontWeight: 600 }}>
+          {part}
+        </strong>
+      ) : (
+        <span key={j}>{part}</span>
+      ),
+    );
+
+    const withCode = parts.flatMap((part, j) => {
+      if (typeof part !== 'string') return [part];
+      return part.split(/`(.*?)`/g).map((p, k) =>
+        k % 2 === 1 ? (
+          <code
+            key={`${j}-${k}`}
+            style={{
+              background: dark ? '#27272a' : '#f4f4f5',
+              color: dark ? '#a1a1aa' : '#52525b',
+              padding: '1px 5px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontFamily: 'ui-monospace, monospace',
+            }}
+          >
+            {p}
+          </code>
+        ) : (
+          p
+        ),
+      );
+    });
+
+    const isBullet = line.startsWith('- ');
+    return (
+      <p
+        key={i}
+        style={{
+          margin: 0,
+          paddingLeft: isBullet ? '12px' : 0,
+          lineHeight: 1.65,
+          fontSize: '14px',
+          color: textMuted,
+        }}
+      >
+        {withCode}
+      </p>
+    );
+  });
+}
+
+function MessageRow({
+  msg,
+  active,
+  dark,
+  onClick,
+}: {
+  msg: InboxMessage;
+  active: boolean;
+  dark: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const unread = msg.status === 'unread';
+  const text = dark ? '#e5e7eb' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+  const hoverBg = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+  const activeBg = dark ? 'rgba(94,106,210,0.08)' : 'rgba(94,106,210,0.06)';
+  const typeCfg = MESSAGE_TYPE_CONFIG[msg.type];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: '100%',
+        display: 'block',
+        padding: '12px 16px',
+        border: 'none',
+        borderBottom: `1px solid ${dark ? '#1a1a1d' : '#f0f0f2'}`,
+        background: active ? activeBg : hovered ? hoverBg : 'transparent',
+        cursor: 'pointer',
+        textAlign: 'left',
+        fontFamily: 'inherit',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px',
+        }}
+      >
+        {unread && (
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: '#5e6ad2',
+              flexShrink: 0,
+              marginTop: '6px',
+            }}
+          />
+        )}
+        {!unread && <span style={{ width: '6px', flexShrink: 0 }} />}
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              marginBottom: '4px',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: unread ? 600 : 500,
+                color: typeCfg.color,
+              }}
+            >
+              {typeCfg.label}
+            </span>
+            <span style={{ fontSize: '12px', color: muted, flexShrink: 0 }}>
+              {msg.timestamp}
+            </span>
+          </div>
+
+          <div
+            style={{
+              fontSize: '13px',
+              fontWeight: unread ? 600 : 500,
+              color: text,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              marginBottom: '3px',
+            }}
+          >
+            {msg.subject}
+          </div>
+
+          <div
+            style={{
+              fontSize: '12px',
+              color: muted,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {msg.from} · {msg.preview}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
 
 export default function InboxPanel({ dark }: { dark: boolean }) {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<string>('1');
   const [messages, setMessages] = useState<InboxMessage[]>(MOCK_MESSAGES);
-  const [filter, setFilter] = useState<'all' | MessageType>('all');
-  const border = dark ? '#27282b' : '#e8e8e5';
-  const bg = dark ? '#0e0f11' : '#f7f7f9';
-  const bgDetail = dark ? '#111113' : '#ffffff';
-  const textMain = dark ? '#ededed' : '#111113';
-  const textMuted = dark ? '#8a8a93' : '#6b6b6b';
-  const hoverBg = dark ? '#ffffff0a' : '#00000008';
-  const activeBg = dark ? '#ffffff12' : '#00000012';
-  const filtered = messages.filter((m) => filter === 'all' || m.type === filter);
+  const [filter, setFilter] = useState<InboxFilter>('all');
+  const [search, setSearch] = useState('');
+
+  const bg = dark ? '#0f0f11' : '#ffffff';
+  const border = dark ? '#1f1f23' : '#e8e8ec';
+  const text = dark ? '#f4f4f5' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+  const surface = dark ? '#18181b' : '#f9fafb';
+  const tabBg = dark ? '#18181b' : '#f4f4f5';
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return messages.filter((m) => {
+      if (filter !== 'all' && m.type !== filter) return false;
+      if (!q) return true;
+      return (
+        m.subject.toLowerCase().includes(q) ||
+        m.from.toLowerCase().includes(q) ||
+        m.preview.toLowerCase().includes(q)
+      );
+    });
+  }, [messages, filter, search]);
+
   const selectedMsg = messages.find((m) => m.id === selected) ?? null;
   const unreadCount = messages.filter((m) => m.status === 'unread').length;
 
   const handleSelect = (id: string) => {
     setSelected(id);
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status: 'read' } : m)));
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, status: 'read' } : m)),
+    );
   };
 
   const handleDelete = (id: string) => {
@@ -47,132 +231,294 @@ export default function InboxPanel({ dark }: { dark: boolean }) {
 
   useEffect(() => {
     if (!selected || messages.some((m) => m.id === selected)) return;
-    const visible = messages.filter(
-      (m) => filter === 'all' || m.type === filter,
-    );
-    setSelected(visible[0]?.id ?? '');
-  }, [messages, selected, filter]);
-  const typeIcon = (type: MessageType) => (type === 'incident' ? <IconIncident /> : type === 'formateur' ? <IconFormateur /> : <IconSystem />);
-  const renderBody = (body: string) =>
-    body.split('\n').map((line, i) => {
-      const parts = line.split(/\*\*(.*?)\*\*/g).map((part, j) =>
-        j % 2 === 1 ? <strong key={j} style={{ color: textMain, fontWeight: 600 }}>{part}</strong> : <span key={j}>{part}</span>,
-      );
-      const finalParts = parts.map((part, j) =>
-        typeof part === 'string'
-          ? part.split(/`(.*?)`/g).map((p, k) =>
-              k % 2 === 1 ? (
-                <code key={k} style={{ background: dark ? '#1e2030' : '#f0f0f5', color: dark ? '#7eb8ff' : '#0055e5', padding: '1px 5px', borderRadius: '3px', fontSize: '12px', fontFamily: 'monospace' }}>
-                  {p}
-                </code>
-              ) : p,
-            )
-          : part,
-      );
-      return (
-        <p key={i} style={{ margin: line === '' ? '0 0 8px 0' : '0 0 4px 0', lineHeight: 1.7, fontSize: '13px', color: line.startsWith('**') ? textMain : textMuted }}>
-          {finalParts}
-        </p>
-      );
-    });
+    setSelected(filtered[0]?.id ?? '');
+  }, [messages, selected, filtered]);
+
+  const routeIncidentId = incidentIdToRouteId(selectedMsg?.incidentId);
 
   return (
-    <div style={{ display: 'flex', height: '100%', fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif', background: bg }}>
-      <div style={{ width: '300px', flexShrink: 0, borderRight: `1px solid ${border}`, display: 'flex', flexDirection: 'column', background: bg }}>
-        <div style={{ height: '48px', display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: `1px solid ${border}`, gap: '8px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: textMain, flex: 1 }}>Boîte de réception</span>
-          {unreadCount > 0 && <span style={{ background: '#0055e5', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '10px' }}>{unreadCount}</span>}
-          <button style={{ width: '26px', height: '26px', border: 'none', background: 'transparent', cursor: 'pointer', color: textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '5px' }} title="Filtrer"><IconFilter /></button>
+    <div
+      style={{
+        display: 'flex',
+        height: '100%',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
+        background: bg,
+      }}
+    >
+      {/* Liste */}
+      <div
+        style={{
+          width: '340px',
+          flexShrink: 0,
+          borderRight: `1px solid ${border}`,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ padding: '20px 16px 12px', flexShrink: 0 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: '8px',
+              marginBottom: '14px',
+            }}
+          >
+            <h1
+              style={{
+                margin: 0,
+                fontSize: '15px',
+                fontWeight: 600,
+                color: text,
+              }}
+            >
+              Inbox
+            </h1>
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#5e6ad2',
+                }}
+              >
+                {unreadCount} non lu{unreadCount > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              gap: '4px',
+              marginBottom: '10px',
+              flexWrap: 'wrap',
+            }}
+          >
+            {INBOX_FILTER_TABS.map((tab) => {
+              const active = filter === tab.id;
+              const count =
+                tab.id === 'all'
+                  ? messages.length
+                  : messages.filter((m) => m.type === tab.id).length;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setFilter(tab.id)}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    background: active ? tabBg : 'transparent',
+                    color: active ? text : muted,
+                  }}
+                >
+                  {tab.label}
+                  <span style={{ marginLeft: '4px', opacity: 0.55 }}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <input
+            type="search"
+            placeholder="Rechercher…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              height: '32px',
+              padding: '0 10px',
+              borderRadius: '6px',
+              border: `1px solid ${border}`,
+              background: surface,
+              color: text,
+              fontSize: '13px',
+              outline: 'none',
+            }}
+          />
         </div>
-        <div style={{ display: 'flex', gap: '4px', padding: '8px 12px', borderBottom: `1px solid ${border}` }}>
-          {INBOX_FILTERS.map(([val, label]) => (
-            <button key={val} onClick={() => setFilter(val)} style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 500, borderRadius: '5px', border: 'none', cursor: 'pointer', background: filter === val ? (dark ? '#ffffff18' : '#00000012') : 'transparent', color: filter === val ? textMain : textMuted, transition: 'background 0.1s' }}>{label}</button>
-          ))}
-        </div>
+
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {filtered.length === 0 && (
+          {filtered.length === 0 ? (
             <div
               style={{
-                padding: '24px 16px',
+                padding: '40px 16px',
                 textAlign: 'center',
-                fontSize: '12px',
-                color: textMuted,
+                fontSize: '13px',
+                color: muted,
               }}
             >
               Aucun message
             </div>
+          ) : (
+            filtered.map((msg) => (
+              <MessageRow
+                key={msg.id}
+                msg={msg}
+                active={msg.id === selected}
+                dark={dark}
+                onClick={() => handleSelect(msg.id)}
+              />
+            ))
           )}
-          {filtered.map((msg) => {
-            const isActive = msg.id === selected;
-            const isUnread = msg.status === 'unread';
-            return (
-              <div key={msg.id} onClick={() => handleSelect(msg.id)} style={{ padding: '10px 14px', cursor: 'pointer', background: isActive ? activeBg : 'transparent', borderBottom: `1px solid ${border}`, transition: 'background 0.1s', position: 'relative' }} onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = hoverBg; }} onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}>
-                {isUnread && <div style={{ position: 'absolute', left: '5px', top: '50%', transform: 'translateY(-50%)', width: '5px', height: '5px', borderRadius: '50%', background: '#0055e5' }} />}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: msg.fromColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px', fontWeight: 700, flexShrink: 0, marginTop: '1px' }}>{msg.fromInitials}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: isUnread ? 600 : 500, color: textMain, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <span style={{ color: msg.fromColor, opacity: 0.8 }}>{typeIcon(msg.type)}</span>{msg.from}
-                      </span>
-                      <span style={{ fontSize: '11px', color: textMuted, flexShrink: 0 }}>{msg.timestamp}</span>
-                    </div>
-                    <div style={{ fontSize: '12px', fontWeight: isUnread ? 600 : 400, color: isUnread ? textMain : textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '3px' }}>{msg.subject}</div>
-                    <div style={{ fontSize: '11px', color: textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.7 }}>{msg.preview}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: bgDetail, minWidth: 0 }}>
+
+      {/* Détail */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+        }}
+      >
         {selectedMsg ? (
           <>
-            <div style={{ height: '48px', display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: `1px solid ${border}`, gap: '10px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: textMain, flex: 1 }}>{selectedMsg.subject}</span>
-              <button
-                type="button"
-                onClick={() => handleDelete(selectedMsg.id)}
-                title="Supprimer ce message"
+            <div
+              style={{
+                padding: '16px 24px',
+                borderBottom: `1px solid ${border}`,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: muted,
+                    marginBottom: '6px',
+                  }}
+                >
+                  {MESSAGE_TYPE_CONFIG[selectedMsg.type as MessageType].label}{' '}
+                  · {selectedMsg.from} · {selectedMsg.timestamp}
+                </div>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: '17px',
+                    fontWeight: 600,
+                    color: text,
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {selectedMsg.subject}
+                </h2>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                {routeIncidentId && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate({
+                        to: '/tickets/$incidentId',
+                        params: { incidentId: routeIncidentId },
+                      })
+                    }
+                    style={{
+                      height: '32px',
+                      padding: '0 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: '#5e6ad2',
+                      color: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Ouvrir l'issue →
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDelete(selectedMsg.id)}
+                  title="Supprimer"
+                  style={{
+                    height: '32px',
+                    padding: '0 10px',
+                    borderRadius: '6px',
+                    border: `1px solid ${border}`,
+                    background: 'transparent',
+                    color: muted,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Supprimer
+                </button>
+              </div>
+            </div>
+
+            {selectedMsg.tags && selectedMsg.tags.length > 0 && (
+              <div
                 style={{
+                  padding: '10px 24px',
+                  borderBottom: `1px solid ${border}`,
                   display: 'flex',
-                  alignItems: 'center',
                   gap: '6px',
-                  height: '28px',
-                  padding: '0 10px',
-                  border: `1px solid ${border}`,
-                  borderRadius: '6px',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  color: '#ef4444',
-                  fontSize: '11px',
-                  fontWeight: 500,
+                  flexWrap: 'wrap',
                 }}
               >
-                <IconTrash />
-                Supprimer
-              </button>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: selectedMsg.fromColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>{selectedMsg.fromInitials}</div>
-                <div><div style={{ fontSize: '13px', fontWeight: 600, color: textMain }}>{selectedMsg.from}</div><div style={{ fontSize: '11px', color: textMuted }}>{selectedMsg.timestamp}</div></div>
-                {selectedMsg.tags && (
-                  <div style={{ display: 'flex', gap: '5px', marginLeft: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    {selectedMsg.tags.map((tag) => {
-                      const c = tagColor(tag);
-                      return <span key={tag} style={{ padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 500, background: c.bg, color: c.color, display: 'flex', alignItems: 'center', gap: '4px' }}><IconTag />{tag}</span>;
-                    })}
-                  </div>
-                )}
+                {selectedMsg.tags.map((tag) => {
+                  const c = tagColor(tag);
+                  return (
+                    <span
+                      key={tag}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: 500,
+                        background: c.bg,
+                        color: c.color,
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  );
+                })}
               </div>
-              <div style={{ height: '1px', background: border, marginBottom: '20px' }} />
-              <div style={{ maxWidth: '640px' }}>{renderBody(selectedMsg.body)}</div>
+            )}
+
+            <div
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '24px 28px',
+              }}
+            >
+              <div style={{ maxWidth: '640px' }}>
+                {renderBody(selectedMsg.body, dark, text, muted)}
+              </div>
             </div>
           </>
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textMuted, fontSize: '13px' }}>Sélectionne un message</div>
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: muted,
+              fontSize: '13px',
+            }}
+          >
+            Sélectionne un message
+          </div>
         )}
       </div>
     </div>

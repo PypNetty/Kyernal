@@ -161,10 +161,10 @@ const MAIN_NAV = [
   {
     id: 'inbox',
     icon: <IconInbox />,
-    label: 'Boîte de réception',
+    label: 'Inbox',
     to: '/inbox',
   },
-  { id: 'tickets', icon: <IconTicket />, label: 'Mes tickets', to: '/tickets' },
+  { id: 'tickets', icon: <IconTicket />, label: 'Issues', to: '/tickets' },
   { id: 'reviews', icon: <IconReview />, label: 'Retours', to: '/retours' },
   { id: 'pulse', icon: <IconPulse />, label: 'Activité', to: '/activite' },
 ];

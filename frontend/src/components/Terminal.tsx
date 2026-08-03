@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
+import { getWsBaseUrl } from '../lib/apiConfig';
 
 interface TerminalComponentProps {
   vmHost?: string;
@@ -47,7 +48,7 @@ export default function TerminalComponent({ vmHost }: TerminalComponentProps) {
     } else {
       term.writeln(`\x1b[1;34m[KLIXY] Connexion à ${vmHost}...\x1b[0m`);
 
-      const ws = new WebSocket(`ws://127.0.0.1:8080/ws/pty?host=${vmHost}`);
+      const ws = new WebSocket(`${getWsBaseUrl()}/ws/pty?host=${vmHost}`);
       ws.binaryType = 'arraybuffer';
       wsRef.current = ws;
 

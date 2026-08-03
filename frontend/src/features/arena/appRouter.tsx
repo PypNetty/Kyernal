@@ -4,6 +4,7 @@ import {
   createRootRoute,
   Outlet,
   redirect,
+  useParams,
 } from '@tanstack/react-router';
 import React, { useContext } from 'react';
 import { Allotment } from 'allotment';
@@ -46,8 +47,15 @@ function MyTicketsPage() {
 }
 
 function TicketDetailPage() {
-  const { dark, vmHost, loading, startSession, vertical } =
+  const { incidentId } = useParams({ strict: false }) as { incidentId: string };
+  const { dark, vmHost, loading, sessionError, startSession, vertical } =
     useContext(LayoutCtx);
+
+  React.useEffect(() => {
+    if (incidentId) {
+      void startSession(incidentId);
+    }
+  }, [incidentId, startSession]);
 
   const [draggedOver, setDraggedOver] = React.useState<
     'term' | 'ticket' | null
@@ -89,8 +97,10 @@ function TicketDetailPage() {
         e.preventDefault();
         setDraggedOver('ticket');
       }}
-      onStartSession={startSession}
+      incidentId={incidentId}
       loading={loading}
+      sessionError={sessionError}
+      vmReady={Boolean(vmHost)}
     />
   );
 

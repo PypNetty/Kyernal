@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Outlet, useRouterState } from '@tanstack/react-router';
 import { useAuth } from '../../../auth';
 import { usePresenceSync } from '../../../auth/hooks/usePresenceSync';
 import { UserProfile } from '../context/types';
 import { useAppTheme } from '../context/AppTheme';
+import { apiUrl } from '../../../../lib/apiConfig';
 import Sidebar from './Sidebar';
 
 // --- NOUVEAU LOGO ---
@@ -211,6 +212,7 @@ export interface LayoutContext {
   vmHost: string | undefined;
   vmId: number | undefined;
   loading: boolean;
+  sessionError: string | undefined;
   startSession: (incidentId: string) => Promise<void>;
   stopSession: () => Promise<void>;
   deleteSession: () => Promise<void>;
@@ -232,6 +234,9 @@ export default function Layout() {
   const [vmHost, setVmHost] = useState<string | undefined>(undefined);
   const [vmId, setVmId] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+  const [sessionError, setSessionError] = useState<string | undefined>(
+    undefined,
+  );
   const [showTerminal, setShowTerminal] = useState(true);
   const [showTicket, setShowTicket] = useState(true);
   const [showCourse, setShowCourse] = useState(false);
@@ -250,28 +255,40 @@ export default function Layout() {
   const text = dark ? '#f4f4f5' : '#09090b';
   const textMuted = dark ? '#71717a' : '#71717a';
 
-  const startSession = async (incidentId: string) => {
+  const startSession = useCallback(async (incidentId: string) => {
     setLoading(true);
+    setSessionError(undefined);
     setVmHost(undefined);
     try {
       const res = await fetch(
-        `http://127.0.0.1:8080/arena/start?incident=${incidentId}`,
+        apiUrl(`/arena/start?incident=${incidentId}`),
         { method: 'POST' },
       );
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(body || `HTTP ${res.status}`);
+      }
       const data = await res.json();
-      setVmHost(data.vmIP);
+      if (data.vmIP) {
+        setVmHost(data.vmIP);
+      }
       setVmId(data.vmID);
     } catch (e) {
       console.error(e);
+      setSessionError(
+        e instanceof Error
+          ? e.message
+          : 'Impossible de démarrer la session Arena',
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const stopSession = async () => {
     if (!vmId) return;
     try {
-      await fetch(`http://127.0.0.1:8080/arena/stop?id=${vmId}`, {
+      await fetch(apiUrl(`/arena/stop?vmid=${vmId}`), {
         method: 'POST',
       });
       setVmHost(undefined);
@@ -283,7 +300,7 @@ export default function Layout() {
   const deleteSession = async () => {
     if (!vmId) return;
     try {
-      await fetch(`http://127.0.0.1:8080/arena/delete?id=${vmId}`, {
+      await fetch(apiUrl(`/arena/delete?vmid=${vmId}`), {
         method: 'DELETE',
       });
       setVmHost(undefined);
@@ -346,6 +363,7 @@ export default function Layout() {
         vmHost,
         vmId,
         loading,
+        sessionError,
         startSession,
         stopSession,
         deleteSession,
@@ -397,7 +415,7 @@ export default function Layout() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
             {isInsideTicketDetail && (
               <>
-                {renderPanelToggle('Ticket', showTicket, () =>
+                {renderPanelToggle('Issue', showTicket, () =>
                   setShowTicket(!showTicket),
                 )}
                 {renderPanelToggle('Cours', showCourse, () =>
