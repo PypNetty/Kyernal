@@ -34,12 +34,31 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func isMockArena() bool {
+	if os.Getenv("MOCK_ARENA") == "true" {
+		return true
+	}
+	return os.Getenv("PROXMOX_HOST") == ""
+}
+
 func startArena(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	client := proxmox.NewClient()
-
+	incident := r.URL.Query().Get("incident")
 	vmID := 300 + rand.Intn(600)
+
+	if isMockArena() {
+		log.Printf("[Arena][MOCK] Session incident=%s vmID=%d (Proxmox non configuré)", incident, vmID)
+		time.Sleep(1500 * time.Millisecond)
+		json.NewEncoder(w).Encode(SessionResponse{
+			SessionID: fmt.Sprintf("mock_sess_%d", time.Now().Unix()),
+			VMIP:      "",
+			VMID:      vmID,
+		})
+		return
+	}
+
+	client := proxmox.NewClient()
 	vmName := fmt.Sprintf("klixy-arena-%d", vmID)
 
 	log.Printf("[Arena] Cloning VM %d (%s)...", vmID, vmName)
@@ -111,6 +130,12 @@ func stopArena(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isMockArena() {
+		log.Printf("[Arena][MOCK] Stop VM %d (no-op)", vmID)
+		w.Write([]byte(`{"status":"stopped"}`))
+		return
+	}
+
 	log.Printf("[Arena] Stopping VM %d...", vmID)
 	client := proxmox.NewClient()
 	if err := client.StopVM(vmID); err != nil {
@@ -129,6 +154,12 @@ func deleteArena(w http.ResponseWriter, r *http.Request) {
 
 	if vmID == 0 {
 		http.Error(w, `{"error":"vmid manquant"}`, http.StatusBadRequest)
+		return
+	}
+
+	if isMockArena() {
+		log.Printf("[Arena][MOCK] Delete VM %d (no-op)", vmID)
+		w.Write([]byte(`{"status":"deleted"}`))
 		return
 	}
 
@@ -164,6 +195,6 @@ func main() {
 		fmt.Fprintf(w, `{"status":"ok"}`)
 	}))
 
-	log.Printf("Klixy backend démarré sur :%s", port)
+	log.Printf("Kyernal backend démarré sur :%s (mock=%v)", port, isMockArena())
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
 }

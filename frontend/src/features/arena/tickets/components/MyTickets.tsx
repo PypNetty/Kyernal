@@ -3,10 +3,15 @@ import { useNavigate } from '@tanstack/react-router';
 import { useContext } from 'react';
 import { LayoutCtx } from '../../layout/components/Layout';
 import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
-
-// --- TYPES ---
-type TicketStatus = 'en-cours' | 'a-faire' | 'resolu' | 'annule';
-type TicketPriority = 'urgent' | 'haute' | 'moyenne' | 'basse';
+import {
+  FILTER_TABS,
+  STATUS_ORDER,
+  TicketFilter,
+  TicketPriority,
+  TicketStatus,
+} from '../data/ticketConfig';
+import TicketPriorityIcon from './TicketPriorityIcon';
+import TicketStatusIcon from './TicketStatusIcon';
 
 interface Ticket {
   id: string;
@@ -14,412 +19,112 @@ interface Ticket {
   title: string;
   status: TicketStatus;
   priority: TicketPriority;
-  competence: string;
+  label: string;
   updatedAt: string;
-  vmActive?: boolean;
 }
 
-// --- STATUT CONFIG ---
-const STATUS_CONFIG: Record<
-  TicketStatus,
-  { label: string; color: string; icon: React.ReactNode }
-> = {
-  'en-cours': {
-    label: 'En cours',
-    color: '#f59e0b',
-    icon: (
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-      </svg>
-    ),
-  },
-  'a-faire': {
-    label: 'À faire',
-    color: '#8a8a93',
-    icon: (
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" />
-      </svg>
-    ),
-  },
-  resolu: {
-    label: 'Résolu',
-    color: '#30a46c',
-    icon: (
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <path d="m9 12 2 2 4-4" />
-      </svg>
-    ),
-  },
-  annule: {
-    label: 'Annulé',
-    color: '#ef4444',
-    icon: (
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <line x1="15" y1="9" x2="9" y2="15" />
-        <line x1="9" y1="9" x2="15" y2="15" />
-      </svg>
-    ),
-  },
-};
-
-// --- PRIORITÉ CONFIG ---
-const PRIORITY_CONFIG: Record<
-  TicketPriority,
-  { label: string; color: string; icon: React.ReactNode }
-> = {
-  urgent: {
-    label: 'Urgent',
-    color: '#ef4444',
-    icon: (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2L2 19h20L12 2zm0 3.5L19.5 18h-15L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z" />
-      </svg>
-    ),
-  },
-  haute: {
-    label: 'Haute',
-    color: '#f97316',
-    icon: (
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <line x1="12" y1="19" x2="12" y2="5" />
-        <polyline points="5 12 12 5 19 12" />
-      </svg>
-    ),
-  },
-  moyenne: {
-    label: 'Moyenne',
-    color: '#8a8a93',
-    icon: (
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-    ),
-  },
-  basse: {
-    label: 'Basse',
-    color: '#6b7280',
-    icon: (
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <polyline points="19 12 12 19 5 12" />
-      </svg>
-    ),
-  },
-};
-
-// --- COMPOSANT GROUPE ---
-function TicketGroup({
-  status,
-  tickets,
-  dark,
-  onTicketClick,
-}: {
-  status: TicketStatus;
-  tickets: Ticket[];
-  dark: boolean;
-  onTicketClick: (t: Ticket) => void;
-}) {
-  const [collapsed, setCollapsed] = useState(false);
-  const cfg = STATUS_CONFIG[status];
-  const textMain = dark ? '#ededed' : '#111113';
-  const textMuted = dark ? '#8a8a93' : '#6b6b6b';
-  const border = dark ? '#1f1f1f' : '#f0f0ee';
-  const hoverBg = dark ? '#ffffff07' : '#00000005';
-
-  if (tickets.length === 0) return null;
-
-  return (
-    <div style={{ marginBottom: '4px' }}>
-      {/* Header groupe */}
-      <div
-        onClick={() => setCollapsed(!collapsed)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '6px 16px',
-          cursor: 'pointer',
-          userSelect: 'none',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = hoverBg;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent';
-        }}
-      >
-        {/* Chevron */}
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={textMuted}
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.15s',
-            flexShrink: 0,
-          }}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-
-        {/* Icône statut */}
-        <span
-          style={{ color: cfg.color, display: 'flex', alignItems: 'center' }}
-        >
-          {cfg.icon}
-        </span>
-
-        <span style={{ fontSize: '12px', fontWeight: 600, color: textMain }}>
-          {cfg.label}
-        </span>
-        <span
-          style={{
-            fontSize: '11px',
-            color: textMuted,
-            background: dark ? '#ffffff0f' : '#0000000a',
-            padding: '1px 6px',
-            borderRadius: '10px',
-          }}
-        >
-          {tickets.length}
-        </span>
-      </div>
-
-      {/* Lignes de tickets */}
-      {!collapsed &&
-        tickets.map((ticket) => (
-          <TicketRow
-            key={ticket.id}
-            ticket={ticket}
-            dark={dark}
-            onClick={() => onTicketClick(ticket)}
-            textMain={textMain}
-            textMuted={textMuted}
-            border={border}
-            hoverBg={hoverBg}
-          />
-        ))}
-    </div>
-  );
-}
-
-// --- LIGNE TICKET ---
 function TicketRow({
   ticket,
   dark,
   onClick,
-  textMain,
-  textMuted,
-  border,
-  hoverBg,
 }: {
   ticket: Ticket;
   dark: boolean;
   onClick: () => void;
-  textMain: string;
-  textMuted: string;
-  border: string;
-  hoverBg: string;
 }) {
   const [hovered, setHovered] = useState(false);
-  const statusCfg = STATUS_CONFIG[ticket.status];
-  const priorityCfg = PRIORITY_CONFIG[ticket.priority];
+  const muted = dark ? '#6b7280' : '#9ca3af';
+  const text = dark ? '#e5e7eb' : '#111827';
+  const hoverBg = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+  const resolved = ticket.status === 'resolu' || ticket.status === 'annule';
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
+        width: '100%',
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        padding: '5px 16px 5px 32px',
-        borderBottom: `1px solid ${border}`,
+        padding: '8px 20px',
+        border: 'none',
+        borderBottom: `1px solid ${dark ? '#1a1a1d' : '#f0f0f2'}`,
         background: hovered ? hoverBg : 'transparent',
         cursor: 'pointer',
-        transition: 'background 0.1s',
+        textAlign: 'left',
+        fontFamily: 'inherit',
+        opacity: resolved ? 0.55 : 1,
       }}
     >
-      {/* Priorité */}
-      <span
-        style={{
-          color: priorityCfg.color,
-          display: 'flex',
-          alignItems: 'center',
-          flexShrink: 0,
-        }}
-        title={priorityCfg.label}
-      >
-        {priorityCfg.icon}
+      <span style={{ flexShrink: 0, display: 'flex' }}>
+        <TicketStatusIcon status={ticket.status} />
       </span>
 
-      {/* Statut */}
       <span
         style={{
-          color: statusCfg.color,
-          display: 'flex',
-          alignItems: 'center',
           flexShrink: 0,
-        }}
-      >
-        {statusCfg.icon}
-      </span>
-
-      {/* ID */}
-      <span
-        style={{
-          fontSize: '11px',
-          color: textMuted,
+          fontSize: '13px',
           fontWeight: 500,
-          flexShrink: 0,
-          minWidth: '60px',
+          color: muted,
+          minWidth: '72px',
         }}
       >
         {ticket.id}
       </span>
 
-      {/* Titre */}
       <span
         style={{
-          fontSize: '13px',
-          color: textMain,
           flex: 1,
+          fontSize: '13px',
+          fontWeight: 500,
+          color: text,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          opacity: ticket.status === 'resolu' ? 0.5 : 1,
-          textDecoration: ticket.status === 'resolu' ? 'line-through' : 'none',
+          textDecoration: resolved ? 'line-through' : 'none',
         }}
       >
         {ticket.title}
       </span>
 
-      {/* VM active badge */}
-      {ticket.vmActive && (
+      <span
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          opacity: hovered ? 1 : 0.7,
+        }}
+      >
+        <TicketPriorityIcon priority={ticket.priority} />
         <span
           style={{
-            fontSize: '10px',
-            padding: '1px 6px',
+            fontSize: '12px',
+            color: muted,
+            padding: '2px 8px',
             borderRadius: '4px',
-            background: 'rgba(48,164,108,0.12)',
-            color: '#30a46c',
-            fontWeight: 600,
-            flexShrink: 0,
+            background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
           }}
         >
-          ● VM active
+          {ticket.label}
         </span>
-      )}
-
-      {/* Compétence */}
-      <span
-        style={{
-          fontSize: '10px',
-          padding: '1px 6px',
-          borderRadius: '4px',
-          background: 'rgba(0,85,229,0.1)',
-          color: '#4d8fff',
-          fontWeight: 500,
-          flexShrink: 0,
-        }}
-      >
-        {ticket.competence}
+        <span style={{ fontSize: '12px', color: muted, minWidth: '64px' }}>
+          {ticket.updatedAt}
+        </span>
       </span>
-
-      {/* Date */}
-      <span
-        style={{
-          fontSize: '11px',
-          color: textMuted,
-          flexShrink: 0,
-          minWidth: '72px',
-          textAlign: 'right',
-        }}
-      >
-        {ticket.updatedAt}
-      </span>
-    </div>
+    </button>
   );
 }
 
-// --- PAGE PRINCIPALE ---
 export default function MyTickets() {
-  const { dark, startSession } = useContext(LayoutCtx);
+  const { dark } = useContext(LayoutCtx);
   const navigate = useNavigate();
   const bundle = useFormationBundle();
+  const [filter, setFilter] = useState<TicketFilter>('all');
+  const [search, setSearch] = useState('');
 
   const tickets: Ticket[] = useMemo(
     () =>
@@ -429,31 +134,44 @@ export default function MyTickets() {
         title: t.title,
         status: t.status,
         priority: t.priority,
-        competence: bundle.referential
-          ? `${t.ccpCode} · ${t.competenceCode}`
+        label: bundle.referential
+          ? `${t.competenceCode}`
           : t.competenceCode,
         updatedAt: t.updatedAt,
-        vmActive: t.status === 'en-cours',
       })),
     [bundle],
   );
 
-  const border = dark ? '#1f1f1f' : '#e8e8e5';
-  const bg = dark ? '#0e0f11' : '#f7f7f9';
-  const textMain = dark ? '#ededed' : '#111113';
-  const textMuted = dark ? '#8a8a93' : '#6b6b6b';
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return tickets.filter((t) => {
+      if (filter !== 'all' && t.status !== filter) return false;
+      if (!q) return true;
+      return (
+        t.id.toLowerCase().includes(q) ||
+        t.title.toLowerCase().includes(q) ||
+        t.label.toLowerCase().includes(q)
+      );
+    });
+  }, [tickets, filter, search]);
 
-  const grouped: Record<TicketStatus, Ticket[]> = {
-    'en-cours': tickets.filter((t) => t.status === 'en-cours'),
-    'a-faire': tickets.filter((t) => t.status === 'a-faire'),
-    resolu: tickets.filter((t) => t.status === 'resolu'),
-    annule: tickets.filter((t) => t.status === 'annule'),
-  };
+  const grouped = useMemo(() => {
+    if (filter !== 'all') return [{ status: filter, items: filtered }];
+    return STATUS_ORDER.map((status) => ({
+      status,
+      items: filtered.filter((t) => t.status === status),
+    })).filter((g) => g.items.length > 0);
+  }, [filtered, filter]);
 
-  const handleTicketClick = async (ticket: Ticket) => {
-    await startSession(ticket.incidentId);
-    navigate({ href: `/tickets/${ticket.incidentId}` });
-  };
+  const activeCount = tickets.filter(
+    (t) => t.status === 'en-cours' || t.status === 'a-faire',
+  ).length;
+
+  const bg = dark ? '#0f0f11' : '#ffffff';
+  const border = dark ? '#1f1f23' : '#e8e8ec';
+  const text = dark ? '#f4f4f5' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+  const tabBg = dark ? '#18181b' : '#f4f4f5';
 
   return (
     <div
@@ -462,119 +180,164 @@ export default function MyTickets() {
         display: 'flex',
         flexDirection: 'column',
         background: bg,
-        fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
       }}
     >
-      {/* Header */}
+      {/* Header Linear-style */}
       <div
         style={{
-          height: '48px',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 16px',
-          borderBottom: `1px solid ${border}`,
-          gap: '10px',
+          padding: '20px 20px 0',
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: '13px', fontWeight: 600, color: textMain }}>
-          Mes tickets
-        </span>
-        <span
+        <div
           style={{
-            fontSize: '11px',
-            color: textMuted,
-            background: dark ? '#ffffff0f' : '#0000000a',
-            padding: '1px 7px',
-            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: '10px',
+            marginBottom: '16px',
           }}
         >
-          {
-            tickets.filter(
-              (t) => t.status !== 'resolu' && t.status !== 'annule',
-            ).length
-          }{' '}
-          actifs
-        </span>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: '15px',
+              fontWeight: 600,
+              color: text,
+              letterSpacing: '-0.01em',
+            }}
+          >
+            Issues
+          </h1>
+          <span style={{ fontSize: '13px', color: muted }}>
+            {activeCount} actifs
+          </span>
+        </div>
+
+        {/* Filtres */}
+        <div
+          style={{
+            display: 'flex',
+            gap: '4px',
+            marginBottom: '12px',
+            flexWrap: 'wrap',
+          }}
+        >
+          {FILTER_TABS.map((tab) => {
+            const active = filter === tab.id;
+            const count =
+              tab.id === 'all'
+                ? tickets.length
+                : tickets.filter((t) => t.status === tab.id).length;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFilter(tab.id)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  background: active ? tabBg : 'transparent',
+                  color: active ? text : muted,
+                  transition: 'background 0.1s',
+                }}
+              >
+                {tab.label}
+                <span style={{ marginLeft: '4px', opacity: 0.6 }}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Recherche */}
+        <div style={{ marginBottom: '12px' }}>
+          <input
+            type="search"
+            placeholder="Rechercher un ticket…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              maxWidth: '320px',
+              height: '32px',
+              padding: '0 12px',
+              borderRadius: '6px',
+              border: `1px solid ${border}`,
+              background: dark ? '#18181b' : '#fafafa',
+              color: text,
+              fontSize: '13px',
+              outline: 'none',
+            }}
+          />
+        </div>
       </div>
 
-      {/* Colonne headers */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '6px 16px 6px 32px',
-          borderBottom: `1px solid ${border}`,
-          background: dark ? '#0c0c0d' : '#fafaf9',
-        }}
-      >
-        <span
-          style={{ fontSize: '10px', color: textMuted, minWidth: '12px' }}
-        />
-        <span
-          style={{ fontSize: '10px', color: textMuted, minWidth: '12px' }}
-        />
-        <span
-          style={{
-            fontSize: '10px',
-            color: textMuted,
-            minWidth: '60px',
-            fontWeight: 600,
-            letterSpacing: '0.4px',
-          }}
-        >
-          ID
-        </span>
-        <span
-          style={{
-            fontSize: '10px',
-            color: textMuted,
-            flex: 1,
-            fontWeight: 600,
-            letterSpacing: '0.4px',
-          }}
-        >
-          TITRE
-        </span>
-        <span
-          style={{
-            fontSize: '10px',
-            color: textMuted,
-            fontWeight: 600,
-            letterSpacing: '0.4px',
-          }}
-        >
-          MIS À JOUR
-        </span>
-      </div>
-
-      {/* Liste groupée */}
+      {/* Liste */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <TicketGroup
-          status="en-cours"
-          tickets={grouped['en-cours']}
-          dark={dark}
-          onTicketClick={handleTicketClick}
-        />
-        <TicketGroup
-          status="a-faire"
-          tickets={grouped['a-faire']}
-          dark={dark}
-          onTicketClick={handleTicketClick}
-        />
-        <TicketGroup
-          status="resolu"
-          tickets={grouped['resolu']}
-          dark={dark}
-          onTicketClick={handleTicketClick}
-        />
-        <TicketGroup
-          status="annule"
-          tickets={grouped['annule']}
-          dark={dark}
-          onTicketClick={handleTicketClick}
-        />
+        {filtered.length === 0 ? (
+          <div
+            style={{
+              padding: '48px 20px',
+              textAlign: 'center',
+              color: muted,
+              fontSize: '13px',
+            }}
+          >
+            Aucun ticket trouvé
+          </div>
+        ) : (
+          grouped.map(({ status, items }) => (
+            <div key={status}>
+              {filter === 'all' && (
+                <div
+                  style={{
+                    padding: '8px 20px 4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: muted,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    position: 'sticky',
+                    top: 0,
+                    background: bg,
+                    zIndex: 1,
+                  }}
+                >
+                  {status === 'en-cours'
+                    ? 'En cours'
+                    : status === 'a-faire'
+                      ? 'À faire'
+                      : status === 'resolu'
+                        ? 'Terminés'
+                        : 'Annulés'}
+                  <span style={{ marginLeft: '6px', fontWeight: 500 }}>
+                    {items.length}
+                  </span>
+                </div>
+              )}
+              {items.map((ticket) => (
+                <TicketRow
+                  key={ticket.id}
+                  ticket={ticket}
+                  dark={dark}
+                  onClick={() =>
+                    navigate({
+                      to: '/tickets/$incidentId',
+                      params: { incidentId: ticket.incidentId },
+                    })
+                  }
+                />
+              ))}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import {
   createRootRoute,
   Outlet,
   redirect,
+  useParams,
 } from '@tanstack/react-router';
 import React, { useContext } from 'react';
 import { Allotment } from 'allotment';
@@ -29,7 +30,7 @@ import {
   SignupPage,
 } from '../auth';
 import { PublicLanding } from '../landing';
-import { HomeLayout, HomePanel } from './home';
+import { HomePanel } from './home';
 import { parseAuthRedirect, safeRedirectPath } from './routing';
 
 function RootPage() {
@@ -46,8 +47,15 @@ function MyTicketsPage() {
 }
 
 function TicketDetailPage() {
-  const { dark, vmHost, loading, startSession, vertical } =
+  const { incidentId } = useParams({ strict: false }) as { incidentId: string };
+  const { dark, vmHost, loading, sessionError, startSession, vertical } =
     useContext(LayoutCtx);
+
+  React.useEffect(() => {
+    if (incidentId) {
+      void startSession(incidentId);
+    }
+  }, [incidentId, startSession]);
 
   const [draggedOver, setDraggedOver] = React.useState<
     'term' | 'ticket' | null
@@ -89,8 +97,10 @@ function TicketDetailPage() {
         e.preventDefault();
         setDraggedOver('ticket');
       }}
-      onStartSession={startSession}
+      incidentId={incidentId}
       loading={loading}
+      sessionError={sessionError}
+      vmReady={Boolean(vmHost)}
     />
   );
 
@@ -176,13 +186,6 @@ function requireAuthWithFormation({
 
 const rootRoute = createRootRoute({ component: RootPage });
 
-const homeLayoutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  id: 'home-layout',
-  component: HomeLayout,
-  beforeLoad: requireAuthWithFormation,
-});
-
 const arenaLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'arena-layout',
@@ -255,7 +258,7 @@ const formationRoute = createRoute({
 });
 
 const homeRoute = createRoute({
-  getParentRoute: () => homeLayoutRoute,
+  getParentRoute: () => arenaLayoutRoute,
   path: '/home',
   component: HomePanel,
 });
@@ -327,8 +330,8 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   signupRoute,
   formationRoute,
-  homeLayoutRoute.addChildren([homeRoute]),
   arenaLayoutRoute.addChildren([
+    homeRoute,
     inboxRoute,
     ticketsRoute.addChildren([ticketsIndexRoute, ticketDetailRoute]),
     reviewsRoute,

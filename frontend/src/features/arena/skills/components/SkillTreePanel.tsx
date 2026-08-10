@@ -1,273 +1,124 @@
-import React, { useState, useCallback, useContext, useEffect } from 'react';
-import { useFormationBundle } from '../hooks/useFormationBundle';
-import ReactFlow, {
-  Node,
-  Edge,
-  Background,
-  Controls,
-  MiniMap,
-  NodeProps,
-  Handle,
-  Position,
-  addEdge,
-  Connection,
-  useNodesState,
-  useEdgesState,
-  MarkerType,
-  Panel,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { LayoutCtx } from '../../layout/components/Layout';
+import { useFormationBundle } from '../hooks/useFormationBundle';
+import {
+  SKILL_FILTER_TABS,
+  SKILL_LEVEL_LABELS,
+  SKILL_STATUS_CONFIG,
+  type SkillFilter,
+} from '../data/skillConfig';
 import {
   DOMAIN_COLORS,
   XP_LEVELS,
+  computeNodeStatus,
   getCurrentLevel,
   getTotalXp,
-  computeNodeStatus,
-  NodeStatus,
-  SkillNode,
-  LearnerProgress,
-  SkillEdge,
+  type LearnerProgress,
+  type NodeStatus,
+  type SkillEdge,
+  type SkillNode,
 } from '../data/progressionConfig';
+import SkillStatusIcon from './SkillStatusIcon';
 
-// ── COULEURS STATUT ────────────────────────────────────────────────────────
-const STATUS_STYLE: Record<
-  NodeStatus,
-  { border: string; bg: string; opacity: number }
-> = {
-  completed: { border: '#30a46c', bg: 'rgba(48,164,108,0.08)', opacity: 1 },
-  'in-progress': { border: '#f59e0b', bg: 'rgba(245,158,11,0.08)', opacity: 1 },
-  available: { border: '#4d8fff', bg: 'rgba(77,143,255,0.06)', opacity: 1 },
-  locked: { border: '#27272a', bg: 'rgba(0,0,0,0)', opacity: 0.45 },
-};
+function getPrerequisites(
+  nodeId: string,
+  edges: SkillEdge[],
+  nodes: SkillNode[],
+): SkillNode[] {
+  return edges
+    .filter((e) => e.target === nodeId)
+    .map((e) => nodes.find((n) => n.id === e.source))
+    .filter((n): n is SkillNode => Boolean(n));
+}
 
-const STATUS_ICON: Record<NodeStatus, string> = {
-  completed: '✓',
-  'in-progress': '◐',
-  available: '○',
-  locked: '🔒',
-};
+interface SkillRow {
+  node: SkillNode;
+  status: NodeStatus;
+  progress?: LearnerProgress;
+}
 
-// ── NŒUD CUSTOM ───────────────────────────────────────────────────────────
-function SkillNodeComponent({ data }: NodeProps) {
-  const { node, status, progress, domainColor, isFormateur } = data;
-  const s = STATUS_STYLE[status];
-  const prog = progress as LearnerProgress | undefined;
+function SkillListRow({
+  row,
+  active,
+  dark,
+  onClick,
+}: {
+  row: SkillRow;
+  active: boolean;
+  dark: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const { node, status } = row;
+  const text = dark ? '#e5e7eb' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+  const hoverBg = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+  const activeBg = dark ? 'rgba(94,106,210,0.08)' : 'rgba(94,106,210,0.06)';
+  const domainColor = DOMAIN_COLORS[node.domain];
+  const locked = status === 'locked';
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        width: '180px',
-        padding: '12px',
-        borderRadius: '10px',
-        border: `1.5px solid ${s.border}`,
-        background: '#111113',
-        boxShadow: status === 'completed' ? `0 0 12px ${s.border}22` : 'none',
-        opacity: s.opacity,
-        cursor: status === 'locked' ? 'not-allowed' : 'pointer',
-        fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif',
-        position: 'relative',
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '10px 16px',
+        border: 'none',
+        borderBottom: `1px solid ${dark ? '#1a1a1d' : '#f0f0f2'}`,
+        background: active ? activeBg : hovered ? hoverBg : 'transparent',
+        cursor: locked ? 'default' : 'pointer',
+        textAlign: 'left',
+        fontFamily: 'inherit',
+        opacity: locked ? 0.5 : 1,
       }}
     >
-      <Handle
-        type="target"
-        position={Position.Left}
+      <SkillStatusIcon status={status} />
+      <span
         style={{
-          background: s.border,
-          width: '8px',
-          height: '8px',
-          border: 'none',
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        style={{
-          background: s.border,
-          width: '8px',
-          height: '8px',
-          border: 'none',
-        }}
-      />
-
-      {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: '6px',
-        }}
-      >
-        <span
-          style={{
-            fontSize: '9px',
-            fontWeight: 700,
-            padding: '2px 6px',
-            borderRadius: '4px',
-            background: `${domainColor}18`,
-            color: domainColor,
-            letterSpacing: '0.5px',
-          }}
-        >
-          {node.competenceCode ?? node.domain.toUpperCase()}
-        </span>
-        <span style={{ fontSize: '12px' }}>{STATUS_ICON[status]}</span>
-      </div>
-
-      {/* Titre */}
-      <div
-        style={{
+          flexShrink: 0,
           fontSize: '12px',
           fontWeight: 600,
-          color: '#e4e4e7',
-          marginBottom: '4px',
-          lineHeight: 1.3,
+          color: domainColor,
+          minWidth: '36px',
+        }}
+      >
+        {node.competenceCode ?? node.domain}
+      </span>
+      <span
+        style={{
+          flex: 1,
+          fontSize: '13px',
+          fontWeight: 500,
+          color: text,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
         {node.title}
-      </div>
-
-      {/* Description */}
-      <div
-        style={{
-          fontSize: '10px',
-          color: '#71717a',
-          lineHeight: 1.5,
-          marginBottom: '8px',
-        }}
-      >
-        {node.description}
-      </div>
-
-      {/* Footer : XP + infos si complété */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <span style={{ fontSize: '10px', color: s.border, fontWeight: 600 }}>
-          +{node.xp} XP
-        </span>
-        {status === 'completed' && prog && (
-          <span style={{ fontSize: '10px', color: '#52525b' }}>
-            {prog.timeMinutes}min ·{' '}
-            {prog.hintsUsed === 0 ? '★ auto' : `${prog.hintsUsed} indices`}
-          </span>
-        )}
-        {node.badge && status === 'completed' && (
-          <span
-            style={{
-              fontSize: '9px',
-              padding: '1px 5px',
-              borderRadius: '3px',
-              background: 'rgba(167,139,250,0.15)',
-              color: '#a78bfa',
-            }}
-          >
-            🏅 {node.badge}
-          </span>
-        )}
-      </div>
-
-      {/* Indicateur niveau */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '-8px',
-          right: '10px',
-          fontSize: '8px',
-          fontWeight: 700,
-          padding: '2px 5px',
-          borderRadius: '3px',
-          background: '#09090b',
-          border: `1px solid ${s.border}`,
-          color: s.border,
-          letterSpacing: '0.3px',
-        }}
-      >
-        {node.level.toUpperCase()}
-      </div>
-    </div>
+      </span>
+      <span style={{ fontSize: '12px', color: muted, flexShrink: 0 }}>
+        +{node.xp} XP
+      </span>
+    </button>
   );
 }
 
-const nodeTypes = { skillNode: SkillNodeComponent };
-
-// ── CONVERSION config → ReactFlow ─────────────────────────────────────────
-function buildNodes(
-  skillNodes: SkillNode[],
-  skillEdges: SkillEdge[],
-  progress: LearnerProgress[],
-  isFormateur: boolean,
-): Node[] {
-  return skillNodes.map((n) => {
-    const status = computeNodeStatus(n.id, progress, skillEdges);
-    return {
-      id: n.id,
-      type: 'skillNode',
-      position: n.position,
-      draggable: isFormateur,
-      data: {
-        node: n,
-        status,
-        progress: progress.find((p) => p.nodeId === n.id),
-        domainColor: DOMAIN_COLORS[n.domain],
-        isFormateur,
-      },
-    };
-  });
-}
-
-function buildEdges(
-  skillEdges: SkillEdge[],
-  progress: LearnerProgress[],
-): Edge[] {
-  return skillEdges.map((e) => {
-    const sourceStatus = computeNodeStatus(e.source, progress, skillEdges);
-    const isActive = sourceStatus === 'completed';
-    return {
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      label:
-        e.branch === 'approfondissement'
-          ? '↓ approfondir'
-          : e.branch === 'nouveauté'
-            ? '→ nouveau'
-            : undefined,
-      style: {
-        stroke: isActive ? '#4d8fff' : '#27272a',
-        strokeWidth: isActive ? 2 : 1,
-        strokeDasharray: isActive ? undefined : '4 4',
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: isActive ? '#4d8fff' : '#27272a',
-      },
-      labelStyle: {
-        fontSize: '10px',
-        fill: '#52525b',
-        fontFamily: 'monospace',
-      },
-      labelBgStyle: { fill: '#09090b', fillOpacity: 0.9 },
-    };
-  });
-}
-
-// ── PANEL STATS ────────────────────────────────────────────────────────────
-function StatsPanel({
+function ProgressHeader({
   progress,
+  total,
   dark,
-  totalNodes,
-  skillNodes,
 }: {
   progress: LearnerProgress[];
+  total: number;
   dark: boolean;
-  totalNodes: number;
-  skillNodes: SkillNode[];
 }) {
   const totalXp = getTotalXp(progress);
   const level = getCurrentLevel(totalXp);
@@ -277,500 +128,619 @@ function StatsPanel({
     ? Math.round(((totalXp - level.min) / (nextLevel.min - level.min)) * 100)
     : 100;
   const completed = progress.filter((p) => p.status === 'completed').length;
-  const total = totalNodes;
+  const text = dark ? '#f4f4f5' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+  const border = dark ? '#1f1f23' : '#e8e8ec';
 
   return (
     <div
       style={{
-        background: '#111113',
-        border: '1px solid #27272a',
-        borderRadius: '8px',
-        padding: '12px 14px',
-        minWidth: '200px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif',
+        padding: '14px 16px',
+        marginBottom: '4px',
+        borderBottom: `1px solid ${border}`,
       }}
     >
       <div
         style={{
-          fontSize: '11px',
-          fontWeight: 600,
-          color: '#52525b',
-          letterSpacing: '0.5px',
-          marginBottom: '10px',
-        }}
-      >
-        PROGRESSION
-      </div>
-
-      {/* Niveau */}
-      <div
-        style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
           marginBottom: '8px',
         }}
       >
-        <span style={{ fontSize: '16px', fontWeight: 700, color: level.color }}>
+        <span style={{ fontSize: '15px', fontWeight: 700, color: level.color }}>
           {totalXp} XP
         </span>
         <span
           style={{
-            fontSize: '10px',
-            padding: '2px 7px',
+            fontSize: '11px',
+            fontWeight: 600,
+            padding: '2px 8px',
             borderRadius: '4px',
             background: `${level.color}18`,
             color: level.color,
-            fontWeight: 600,
           }}
         >
-          {level.level.toUpperCase()}
+          {SKILL_LEVEL_LABELS[level.level] ?? level.level}
         </span>
       </div>
-
-      {/* Barre XP */}
       <div
         style={{
           height: '4px',
           borderRadius: '2px',
-          background: '#27272a',
-          marginBottom: '10px',
+          background: dark ? '#27272a' : '#e5e7eb',
           overflow: 'hidden',
+          marginBottom: '6px',
         }}
       >
         <div
           style={{
             height: '100%',
-            borderRadius: '2px',
-            background: level.color,
             width: `${pct}%`,
-            transition: 'width 0.4s',
+            background: level.color,
+            borderRadius: '2px',
+            transition: 'width 0.3s',
           }}
         />
       </div>
-
-      {/* Tickets */}
-      <div style={{ fontSize: '11px', color: '#71717a' }}>
-        {completed}/{total} tickets résolus
-      </div>
-
-      {/* Badges */}
-      <div
-        style={{
-          marginTop: '8px',
-          display: 'flex',
-          gap: '4px',
-          flexWrap: 'wrap',
-        }}
-      >
-        {skillNodes
-          .filter(
-            (n) =>
-              n.badge &&
-              progress.find((p) => p.nodeId === n.id)?.status === 'completed',
-          )
-          .map((n) => (
-          <span
-            key={n.id}
-            style={{
-              fontSize: '9px',
-              padding: '2px 6px',
-              borderRadius: '3px',
-              background: 'rgba(167,139,250,0.15)',
-              color: '#a78bfa',
-            }}
-          >
-            🏅 {n.badge}
-          </span>
-        ))}
-      </div>
+      <span style={{ fontSize: '12px', color: muted }}>
+        {completed}/{total} compétences validées
+      </span>
     </div>
   );
 }
 
-// ── COMPOSANT PRINCIPAL ───────────────────────────────────────────────────
 export default function SkillTreePanel() {
   const { dark } = useContext(LayoutCtx);
+  const navigate = useNavigate();
   const bundle = useFormationBundle();
-  const [isFormateur, setIsFormateur] = useState(false);
   const [progress, setProgress] = useState<LearnerProgress[]>(
     bundle.mockProgress,
   );
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [filter, setFilter] = useState<SkillFilter>('all');
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     setProgress(bundle.mockProgress);
-    setSelectedNode(null);
+    setSelectedId(null);
   }, [bundle.formationId, bundle.mockProgress]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(
-    buildNodes(bundle.nodes, bundle.edges, progress, isFormateur),
-  );
-  const [edges, setEdges, onEdgesChange] = useEdgesState(
-    buildEdges(bundle.edges, progress),
+  const rows: SkillRow[] = useMemo(
+    () =>
+      bundle.nodes.map((node) => ({
+        node,
+        status: computeNodeStatus(node.id, progress, bundle.edges),
+        progress: progress.find((p) => p.nodeId === node.id),
+      })),
+    [bundle.nodes, bundle.edges, progress],
   );
 
   useEffect(() => {
-    setNodes(buildNodes(bundle.nodes, bundle.edges, progress, isFormateur));
-    setEdges(buildEdges(bundle.edges, progress));
-  }, [bundle.nodes, bundle.edges, progress, isFormateur, setNodes, setEdges]);
+    if (selectedId && rows.some((r) => r.node.id === selectedId)) return;
+    const pick =
+      rows.find((r) => r.status === 'in-progress') ??
+      rows.find((r) => r.status === 'available') ??
+      rows[0];
+    setSelectedId(pick?.node.id ?? null);
+  }, [rows, selectedId]);
 
-  const handleRoleToggle = () => {
-    setIsFormateur((prev) => !prev);
-  };
-
-  // Formateur — ajout de lien par drag
-  const onConnect = useCallback(
-    (params: Connection) => {
-      if (!isFormateur) return;
-      setEdges((eds) =>
-        addEdge(
-          {
-            ...params,
-            style: { stroke: '#4d8fff', strokeWidth: 2 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#4d8fff' },
-          },
-          eds,
-        ),
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (filter !== 'all' && r.status !== filter) return false;
+      if (!q) return true;
+      return (
+        r.node.title.toLowerCase().includes(q) ||
+        r.node.description.toLowerCase().includes(q) ||
+        (r.node.competenceCode?.toLowerCase().includes(q) ?? false)
       );
+    });
+  }, [rows, filter, search]);
+
+  const groups = useMemo(() => {
+    if (bundle.ccps.length > 0 && bundle.referential) {
+      return bundle.ccps
+        .map((ccp) => ({
+          label: ccp.code,
+          subtitle: ccp.title,
+          items: filtered.filter((r) => r.node.ccpCode === ccp.code),
+        }))
+        .filter((g) => g.items.length > 0);
+    }
+    return [{ label: 'Parcours', subtitle: '', items: filtered }];
+  }, [bundle.ccps, bundle.referential, filtered]);
+
+  const selected = rows.find((r) => r.node.id === selectedId) ?? null;
+
+  const launchLab = useCallback(
+    (node: SkillNode) => {
+      const incidentId = node.incidentId?.replace(/^INC-/, '');
+      if (!incidentId) return;
+      navigate({ to: '/tickets/$incidentId', params: { incidentId } });
     },
-    [isFormateur, setEdges],
+    [navigate],
   );
 
-  // Clic sur un nœud — apprenant peut lancer le ticket
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    const status = node.data.status as NodeStatus;
-    if (status === 'locked') return;
-    setSelectedNode(node.id);
-  }, []);
-
-  const border = dark ? '#1f1f1f' : '#e8e8e5';
-  const headerTextMuted = dark ? '#8a8a93' : '#6b6b6b';
-  const bg = dark ? '#09090b' : '#fafaf9';
-  const textMain = dark ? '#ededed' : '#111113';
-  const textMuted = dark ? '#8a8a93' : '#6b6b6b';
+  const bg = dark ? '#0f0f11' : '#ffffff';
+  const border = dark ? '#1f1f23' : '#e8e8ec';
+  const text = dark ? '#f4f4f5' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+  const surface = dark ? '#18181b' : '#f9fafb';
+  const tabBg = dark ? '#18181b' : '#f4f4f5';
 
   return (
     <div
       style={{
         height: '100%',
         display: 'flex',
-        flexDirection: 'column',
         background: bg,
-        fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
       }}
     >
-      {/* Header */}
+      {/* Liste */}
       <div
         style={{
-          height: '48px',
+          width: '380px',
+          flexShrink: 0,
+          borderRight: `1px solid ${border}`,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ padding: '20px 16px 0', flexShrink: 0 }}>
+          <div style={{ marginBottom: '4px' }}>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: '15px',
+                fontWeight: 600,
+                color: text,
+              }}
+            >
+              Compétences
+            </h1>
+            {bundle.referential?.treeLabel && (
+              <p
+                style={{
+                  margin: '4px 0 0',
+                  fontSize: '12px',
+                  color: muted,
+                }}
+              >
+                {bundle.referential.treeLabel}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <ProgressHeader
+          progress={progress}
+          total={bundle.nodes.length}
+          dark={dark}
+        />
+
+        <div style={{ padding: '0 16px 10px', flexShrink: 0 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: '4px',
+              marginBottom: '10px',
+              flexWrap: 'wrap',
+            }}
+          >
+            {SKILL_FILTER_TABS.map((tab) => {
+              const active = filter === tab.id;
+              const count =
+                tab.id === 'all'
+                  ? rows.length
+                  : rows.filter((r) => r.status === tab.id).length;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setFilter(tab.id)}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    background: active ? tabBg : 'transparent',
+                    color: active ? text : muted,
+                  }}
+                >
+                  {tab.label}
+                  <span style={{ marginLeft: '4px', opacity: 0.55 }}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <input
+            type="search"
+            placeholder="Rechercher…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              height: '32px',
+              padding: '0 10px',
+              borderRadius: '6px',
+              border: `1px solid ${border}`,
+              background: surface,
+              color: text,
+              fontSize: '13px',
+              outline: 'none',
+            }}
+          />
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {filtered.length === 0 ? (
+            <div
+              style={{
+                padding: '40px 16px',
+                textAlign: 'center',
+                fontSize: '13px',
+                color: muted,
+              }}
+            >
+              Aucune compétence
+            </div>
+          ) : (
+            groups.map((group) => (
+              <div key={group.label}>
+                <div
+                  style={{
+                    padding: '8px 16px 4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: muted,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    position: 'sticky',
+                    top: 0,
+                    background: bg,
+                    zIndex: 1,
+                  }}
+                >
+                  {group.label}
+                  {group.subtitle && (
+                    <span
+                      style={{
+                        marginLeft: '6px',
+                        fontWeight: 500,
+                        textTransform: 'none',
+                        letterSpacing: 0,
+                      }}
+                    >
+                      · {group.subtitle}
+                    </span>
+                  )}
+                </div>
+                {group.items.map((row) => (
+                  <SkillListRow
+                    key={row.node.id}
+                    row={row}
+                    active={row.node.id === selectedId}
+                    dark={dark}
+                    onClick={() => setSelectedId(row.node.id)}
+                  />
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Détail */}
+      <div style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
+        {selected ? (
+          <SkillDetail
+            row={selected}
+            progress={progress}
+            edges={bundle.edges}
+            nodes={bundle.nodes}
+            dark={dark}
+            onLaunch={launchLab}
+          />
+        ) : (
+          <div
+            style={{
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: muted,
+              fontSize: '13px',
+            }}
+          >
+            Sélectionne une compétence
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SkillDetail({
+  row,
+  progress,
+  edges,
+  nodes,
+  dark,
+  onLaunch,
+}: {
+  row: SkillRow;
+  progress: LearnerProgress[];
+  edges: SkillEdge[];
+  nodes: SkillNode[];
+  dark: boolean;
+  onLaunch: (node: SkillNode) => void;
+}) {
+  const { node, status, progress: prog } = row;
+  const prereqs = getPrerequisites(node.id, edges, nodes);
+  const domainColor = DOMAIN_COLORS[node.domain];
+  const text = dark ? '#f4f4f5' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+  const border = dark ? '#1f1f23' : '#e8e8ec';
+  const surface = dark ? '#18181b' : '#f9fafb';
+  const statusCfg = SKILL_STATUS_CONFIG[status];
+
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: '640px' }}>
+      <div
+        style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '0 16px',
-          borderBottom: `1px solid ${border}`,
-          gap: '10px',
-          flexShrink: 0,
+          gap: '8px',
+          marginBottom: '12px',
         }}
       >
         <span
           style={{
-            fontSize: '13px',
-            fontWeight: 600,
-            color: textMain,
-            flex: 1,
+            fontSize: '11px',
+            fontWeight: 700,
+            padding: '3px 8px',
+            borderRadius: '4px',
+            background: `${domainColor}18`,
+            color: domainColor,
           }}
         >
-          Arbre de compétences
-          {bundle.referential?.treeLabel && (
-            <span
-              style={{
-                marginLeft: '8px',
-                fontSize: '10px',
-                fontWeight: 500,
-                color: headerTextMuted,
-              }}
-            >
-              · {bundle.referential.treeLabel}
-            </span>
-          )}
+          {node.competenceCode ?? node.domain.toUpperCase()}
         </span>
-
-        {/* Légende domaines */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {Object.entries(DOMAIN_COLORS).map(([domain, color]) => (
-            <span
-              key={domain}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '10px',
-                color: textMuted,
-              }}
-            >
-              <span
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '2px',
-                  background: color,
-                  display: 'inline-block',
-                }}
-              />
-              {domain}
-            </span>
-          ))}
-        </div>
-
-        {/* Toggle rôle */}
-        <div
-          style={{
-            display: 'flex',
-            background: dark ? '#141416' : '#f0f0ee',
-            border: `1px solid ${border}`,
-            borderRadius: '6px',
-            padding: '3px',
-            gap: '2px',
-          }}
-        >
-          {(['Apprenant', 'Formateur'] as const).map((r) => (
-            <button
-              key={r}
-              onClick={handleRoleToggle}
-              style={{
-                padding: '3px 10px',
-                borderRadius: '4px',
-                border: 'none',
-                background:
-                  (r === 'Formateur') === isFormateur
-                    ? dark
-                      ? '#27272a'
-                      : '#ffffff'
-                    : 'transparent',
-                color:
-                  (r === 'Formateur') === isFormateur ? textMain : textMuted,
-                fontSize: '11px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
+        {node.ccpCode && (
+          <span
+            style={{
+              fontSize: '11px',
+              fontWeight: 500,
+              padding: '3px 8px',
+              borderRadius: '4px',
+              background: dark ? '#27272a' : '#f4f4f5',
+              color: muted,
+            }}
+          >
+            {node.ccpCode}
+          </span>
+        )}
       </div>
 
-      {/* Info mode formateur */}
-      {isFormateur && (
+      <h2
+        style={{
+          margin: '0 0 8px',
+          fontSize: '22px',
+          fontWeight: 600,
+          color: text,
+          letterSpacing: '-0.02em',
+          lineHeight: 1.3,
+        }}
+      >
+        {node.title}
+      </h2>
+
+      <p
+        style={{
+          margin: '0 0 24px',
+          fontSize: '14px',
+          lineHeight: 1.65,
+          color: dark ? '#a1a1aa' : '#4b5563',
+        }}
+      >
+        {node.description}
+      </p>
+
+      <div
+        style={{
+          padding: '14px 16px',
+          borderRadius: '8px',
+          border: `1px solid ${border}`,
+          background: surface,
+          marginBottom: '24px',
+        }}
+      >
+        <Property label="Statut" dark={dark}>
+          <SkillStatusIcon status={status} />
+          {statusCfg.label}
+        </Property>
+        <Property label="Niveau" dark={dark}>
+          {SKILL_LEVEL_LABELS[node.level] ?? node.level}
+        </Property>
+        <Property label="Récompense" dark={dark}>
+          +{node.xp} XP
+        </Property>
+        <Property label="Domaine" dark={dark}>
+          <span style={{ color: domainColor }}>{node.domain}</span>
+        </Property>
+        {node.incidentId && (
+          <Property label="Issue liée" dark={dark}>
+            {node.incidentId}
+          </Property>
+        )}
+      </div>
+
+      {prereqs.length > 0 && (
+        <section style={{ marginBottom: '24px' }}>
+          <h3
+            style={{
+              margin: '0 0 10px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: muted,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Prérequis
+          </h3>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+            }}
+          >
+            {prereqs.map((p) => (
+                <PrereqItem
+                  key={p.id}
+                  prereq={p}
+                  progress={progress}
+                  edges={edges}
+                  dark={dark}
+                />
+              ))}
+          </ul>
+        </section>
+      )}
+
+      {node.badge && status === 'completed' && (
         <div
           style={{
-            padding: '6px 16px',
-            background: 'rgba(77,143,255,0.06)',
-            borderBottom: `1px solid rgba(77,143,255,0.15)`,
-            fontSize: '11px',
-            color: '#4d8fff',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            background: 'rgba(167,139,250,0.1)',
+            border: '1px solid rgba(167,139,250,0.2)',
+            color: '#a78bfa',
+            fontSize: '13px',
+            fontWeight: 500,
+            marginBottom: '20px',
           }}
         >
-          Mode formateur — glissez les nœuds pour les repositionner · Connectez
-          deux nœuds pour créer un prérequis
+          Badge débloqué · {node.badge}
         </div>
       )}
 
-      {/* Canvas ReactFlow */}
-      <div style={{ flex: 1, position: 'relative' }}>
-        <ReactFlow
-          key={bundle.formationId}
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          nodesDraggable={isFormateur}
-          nodesConnectable={isFormateur}
-          elementsSelectable
-          style={{ background: bg }}
+      {(status === 'available' || status === 'in-progress') && node.incidentId && (
+        <button
+          type="button"
+          onClick={() => onLaunch(node)}
+          style={{
+            height: '36px',
+            padding: '0 16px',
+            borderRadius: '6px',
+            border: status === 'in-progress' ? '1px solid #f2c94c' : 'none',
+            background: status === 'in-progress' ? 'transparent' : '#5e6ad2',
+            color: status === 'in-progress' ? '#f2c94c' : '#fff',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
         >
-          <Background color={dark ? '#27272a' : '#e4e4e4'} gap={24} size={1} />
-          <Controls
-            style={{ background: '#111113', border: '1px solid #27272a' }}
-          />
-          <MiniMap
-            nodeColor={(n) => {
-              const status = n.data?.status as NodeStatus;
-              return STATUS_STYLE[status]?.border ?? '#27272a';
-            }}
-            style={{ background: '#111113', border: '1px solid #27272a' }}
-          />
+          {status === 'in-progress' ? 'Reprendre le lab →' : 'Lancer le lab →'}
+        </button>
+      )}
 
-          {/* Panel stats en haut à gauche */}
-          <Panel position="top-left">
-            <StatsPanel
-              progress={progress}
-              dark={dark}
-              totalNodes={bundle.nodes.length}
-              skillNodes={bundle.nodes}
-            />
-          </Panel>
+      {status === 'completed' && prog && (
+        <div style={{ fontSize: '13px', color: '#30a46c', fontWeight: 500 }}>
+          Validé en {prog.timeMinutes} min
+          {prog.hintsUsed === 0
+            ? ' · Autonomie totale'
+            : ` · ${prog.hintsUsed} indice(s)`}
+        </div>
+      )}
 
-          {/* Panel détail nœud sélectionné */}
-          {selectedNode &&
-            (() => {
-              const node = bundle.nodes.find((n) => n.id === selectedNode);
-              const prog = progress.find((p) => p.nodeId === selectedNode);
-              const status = computeNodeStatus(
-                selectedNode,
-                progress,
-                bundle.edges,
-              );
-              if (!node) return null;
-              const color = DOMAIN_COLORS[node.domain];
-              return (
-                <Panel position="top-right">
-                  <div
-                    style={{
-                      background: '#111113',
-                      border: `1px solid ${color}44`,
-                      borderRadius: '8px',
-                      padding: '14px',
-                      minWidth: '220px',
-                      fontFamily:
-                        '-apple-system, BlinkMacSystemFont, Inter, sans-serif',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        marginBottom: '8px',
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          fontWeight: 700,
-                          color,
-                          letterSpacing: '0.5px',
-                        }}
-                      >
-                        {node.domain.toUpperCase()}
-                      </span>
-                      <button
-                        onClick={() => setSelectedNode(null)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#52525b',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        color: '#e4e4e7',
-                        marginBottom: '6px',
-                      }}
-                    >
-                      {node.title}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '11px',
-                        color: '#71717a',
-                        lineHeight: 1.6,
-                        marginBottom: '10px',
-                      }}
-                    >
-                      {node.description}
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '6px',
-                        marginBottom: '12px',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: `${color}18`,
-                          color,
-                        }}
-                      >
-                        +{node.xp} XP
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: '#27272a',
-                          color: '#71717a',
-                        }}
-                      >
-                        {node.level}
-                      </span>
-                      {node.badge && (
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: 'rgba(167,139,250,0.15)',
-                            color: '#a78bfa',
-                          }}
-                        >
-                          🏅 {node.badge}
-                        </span>
-                      )}
-                    </div>
-                    {status === 'available' && (
-                      <button
-                        style={{
-                          width: '100%',
-                          height: '32px',
-                          borderRadius: '6px',
-                          background: color,
-                          color: '#09090b',
-                          border: 'none',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Lancer ce lab →
-                      </button>
-                    )}
-                    {status === 'completed' && prog && (
-                      <div style={{ fontSize: '11px', color: '#30a46c' }}>
-                        ✓ Complété en {prog.timeMinutes}min
-                        {prog.hintsUsed === 0
-                          ? ' · Autonomie totale'
-                          : ` · ${prog.hintsUsed} indice(s)`}
-                      </div>
-                    )}
-                    {status === 'in-progress' && (
-                      <div style={{ fontSize: '11px', color: '#f59e0b' }}>
-                        ◐ En cours…
-                      </div>
-                    )}
-                  </div>
-                </Panel>
-              );
-            })()}
-        </ReactFlow>
-      </div>
+      {status === 'locked' && (
+        <p style={{ margin: 0, fontSize: '13px', color: muted }}>
+          Termine les prérequis pour débloquer cette compétence.
+        </p>
+      )}
     </div>
+  );
+}
+
+function Property({
+  label,
+  children,
+  dark,
+}: {
+  label: string;
+  children: React.ReactNode;
+  dark: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '5px 0',
+        fontSize: '13px',
+      }}
+    >
+      <span style={{ color: dark ? '#71717a' : '#6b7280' }}>{label}</span>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          color: dark ? '#e4e4e7' : '#111827',
+          fontWeight: 500,
+        }}
+      >
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function PrereqItem({
+  prereq,
+  progress,
+  edges,
+  dark,
+}: {
+  prereq: SkillNode;
+  progress: LearnerProgress[];
+  edges: SkillEdge[];
+  dark: boolean;
+}) {
+  const pStatus = computeNodeStatus(prereq.id, progress, edges);
+  const done = pStatus === 'completed';
+  const text = dark ? '#e5e7eb' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+
+  return (
+    <li
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        fontSize: '13px',
+        color: done ? muted : text,
+        textDecoration: done ? 'line-through' : 'none',
+      }}
+    >
+      <SkillStatusIcon status={pStatus} size={12} />
+      <span style={{ fontWeight: 500 }}>
+        {prereq.competenceCode ?? prereq.domain}
+      </span>
+      <span style={{ color: muted }}>{prereq.title}</span>
+    </li>
   );
 }
