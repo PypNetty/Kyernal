@@ -30,7 +30,7 @@ import {
   SignupPage,
 } from '../auth';
 import { PublicLanding } from '../landing';
-import { HomeLayout, HomePanel } from './home';
+import { HomePanel } from './home';
 import { parseAuthRedirect, safeRedirectPath } from './routing';
 
 function RootPage() {
@@ -186,13 +186,6 @@ function requireAuthWithFormation({
 
 const rootRoute = createRootRoute({ component: RootPage });
 
-const homeLayoutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  id: 'home-layout',
-  component: HomeLayout,
-  beforeLoad: requireAuthWithFormation,
-});
-
 const arenaLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'arena-layout',
@@ -265,7 +258,7 @@ const formationRoute = createRoute({
 });
 
 const homeRoute = createRoute({
-  getParentRoute: () => homeLayoutRoute,
+  getParentRoute: () => arenaLayoutRoute,
   path: '/home',
   component: HomePanel,
 });
@@ -337,8 +330,8 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   signupRoute,
   formationRoute,
-  homeLayoutRoute.addChildren([homeRoute]),
   arenaLayoutRoute.addChildren([
+    homeRoute,
     inboxRoute,
     ticketsRoute.addChildren([ticketsIndexRoute, ticketDetailRoute]),
     reviewsRoute,

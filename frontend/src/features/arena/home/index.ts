@@ -1,4 +1,3 @@
-export { default as HomeLayout } from './components/HomeLayout';
 export { default as HomePanel } from './components/HomePanel';
 export {
   AUTONOMY_SCORE,

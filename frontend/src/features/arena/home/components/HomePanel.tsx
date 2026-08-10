@@ -1,5 +1,8 @@
 import { Link } from '@tanstack/react-router';
+import { useContext } from 'react';
 import { useAuth } from '../../../auth';
+import { LayoutCtx } from '../../layout/components/Layout';
+import { SKILL_LEVEL_LABELS } from '../../skills/data/skillConfig';
 import { useFormationBundle } from '../../skills/hooks/useFormationBundle';
 import {
   AUTONOMY_SCORE,
@@ -9,17 +12,16 @@ import {
   type LastSession,
   type RecommendedIncident,
 } from '../data/homeData';
-import styles from './Home.module.css';
 
-const DOMAIN_SHORT: Record<string, string> = {
+const DOMAIN_LABEL: Record<string, string> = {
   linux: 'Linux',
-  web: 'Apache',
+  web: 'Web',
   reseau: 'Réseau',
   securite: 'Sécurité',
   cloud: 'Cloud',
 };
 
-function formatEyebrowDate(date: Date): string {
+function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
     day: 'numeric',
@@ -27,97 +29,259 @@ function formatEyebrowDate(date: Date): string {
   }).format(date);
 }
 
-function CtaArrow() {
+function StatCard({
+  label,
+  value,
+  hint,
+  dark,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  dark: boolean;
+}) {
+  const border = dark ? '#1f1f23' : '#e8e8ec';
+  const surface = dark ? '#18181b' : '#f9fafb';
+  const text = dark ? '#f4f4f5' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
+    <div
+      style={{
+        padding: '14px 16px',
+        borderRadius: '8px',
+        border: `1px solid ${border}`,
+        background: surface,
+        minWidth: 0,
+      }}
     >
-      <path d="M5 12h14M13 6l6 6-6 6" />
-    </svg>
+      <div
+        style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          color: muted,
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+          marginBottom: '6px',
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: '20px',
+          fontWeight: 600,
+          color: text,
+          letterSpacing: '-0.02em',
+        }}
+      >
+        {value}
+      </div>
+      {hint && (
+        <div style={{ fontSize: '12px', color: muted, marginTop: '4px' }}>
+          {hint}
+        </div>
+      )}
+    </div>
   );
 }
 
-function FocalResumeCard({ session }: { session: LastSession }) {
-  const hintLabel =
-    session.hintsUsed === 1
-      ? '1 indice utilisé'
-      : `${session.hintsUsed} indices utilisés`;
+function SessionCard({
+  session,
+  dark,
+}: {
+  session: LastSession;
+  dark: boolean;
+}) {
+  const border = dark ? '#1f1f23' : '#e8e8ec';
+  const text = dark ? '#f4f4f5' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
 
   return (
     <section
-      className={`${styles.focal} ${styles.reveal} ${styles.d4}`}
-      style={{ ['--progress-pct' as string]: `${session.progressPercent}%` }}
+      style={{
+        padding: '16px',
+        borderRadius: '8px',
+        border: `1px solid ${border}`,
+        background: dark ? '#18181b' : '#f9fafb',
+      }}
     >
-      <div className={styles.focalTop}>
-        <span className={styles.tag}>
-          <b>{session.incidentId}</b> · {DOMAIN_SHORT[session.domain] ?? session.domain}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          marginBottom: '10px',
+        }}
+      >
+        <span
+          style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            color: '#5e6ad2',
+          }}
+        >
+          {session.incidentId}
         </span>
         {session.vmActive && (
-          <span className={styles.vm}>
-            <span className={styles.dot} />
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: '#30a46c',
+            }}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: '#30a46c',
+              }}
+            />
             VM active
           </span>
         )}
       </div>
-      <h2 className={styles.focalTitle}>{session.title}</h2>
-      <div className={styles.focalMeta}>Dernière activité · {session.lastActive}</div>
-      <div className={styles.bar}>
-        <span className={styles.barFill} />
+      <h3
+        style={{
+          margin: '0 0 6px',
+          fontSize: '15px',
+          fontWeight: 600,
+          color: text,
+        }}
+      >
+        {session.title}
+      </h3>
+      <p style={{ margin: '0 0 14px', fontSize: '13px', color: muted }}>
+        {DOMAIN_LABEL[session.domain] ?? session.domain} · {session.lastActive}{' '}
+        · {session.progressPercent}% ·{' '}
+        {session.hintsUsed === 1
+          ? '1 indice'
+          : `${session.hintsUsed} indices`}
+      </p>
+      <div
+        style={{
+          height: '4px',
+          borderRadius: '2px',
+          background: dark ? '#27272a' : '#e5e7eb',
+          overflow: 'hidden',
+          marginBottom: '14px',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            width: `${session.progressPercent}%`,
+            background: '#5e6ad2',
+            borderRadius: '2px',
+          }}
+        />
       </div>
-      <div className={styles.focalFoot}>
-        <span className={styles.pct}>
-          {session.progressPercent}&nbsp;%&nbsp;·&nbsp;{hintLabel}
-        </span>
-        <Link
-          to="/tickets/$incidentId"
-          params={{ incidentId: session.ticketRouteId }}
-          className={styles.cta}
-        >
-          Reprendre la session
-          <CtaArrow />
-        </Link>
-      </div>
+      <Link
+        to="/tickets/$incidentId"
+        params={{ incidentId: session.ticketRouteId }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          height: '32px',
+          padding: '0 14px',
+          borderRadius: '6px',
+          background: '#5e6ad2',
+          color: '#fff',
+          fontSize: '13px',
+          fontWeight: 600,
+          textDecoration: 'none',
+        }}
+      >
+        Reprendre la session →
+      </Link>
     </section>
   );
 }
 
-function FocalRecommendedCard({ incident }: { incident: RecommendedIncident }) {
+function RecommendedCard({
+  incident,
+  dark,
+}: {
+  incident: RecommendedIncident;
+  dark: boolean;
+}) {
+  const border = dark ? '#1f1f23' : '#e8e8ec';
+  const text = dark ? '#f4f4f5' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
   const locked = incident.status === 'locked';
 
   return (
-    <section className={`${styles.focal} ${styles.reveal} ${styles.d4}`}>
-      <div className={styles.focalTop}>
-        <span className={styles.tag}>
-          <b>{incident.incidentId}</b> · +{incident.node.xp} XP
-        </span>
-      </div>
-      <h2 className={styles.focalTitle}>{incident.node.title}</h2>
-      <div className={styles.focalMeta}>{incident.reason}</div>
-      <div className={styles.focalFoot}>
-        <span className={styles.pct}>{locked ? 'Prérequis manquants' : 'Prêt à démarrer'}</span>
-        <Link
-          to="/tickets/$incidentId"
-          params={{ incidentId: incident.ticketRouteId }}
-          className={styles.cta}
-          style={locked ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
-        >
-          Lancer le lab
-          <CtaArrow />
-        </Link>
-      </div>
+    <section
+      style={{
+        padding: '16px',
+        borderRadius: '8px',
+        border: `1px solid ${border}`,
+        background: dark ? '#18181b' : '#f9fafb',
+        opacity: locked ? 0.7 : 1,
+      }}
+    >
+      <span
+        style={{
+          fontSize: '12px',
+          fontWeight: 600,
+          color: '#5e6ad2',
+        }}
+      >
+        {incident.incidentId} · +{incident.node.xp} XP
+      </span>
+      <h3
+        style={{
+          margin: '8px 0 6px',
+          fontSize: '15px',
+          fontWeight: 600,
+          color: text,
+        }}
+      >
+        {incident.node.title}
+      </h3>
+      <p style={{ margin: '0 0 14px', fontSize: '13px', color: muted }}>
+        {incident.reason}
+      </p>
+      <Link
+        to="/tickets/$incidentId"
+        params={{ incidentId: incident.ticketRouteId }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          height: '32px',
+          padding: '0 14px',
+          borderRadius: '6px',
+          background: locked ? 'transparent' : '#5e6ad2',
+          color: locked ? muted : '#fff',
+          border: locked ? `1px solid ${border}` : 'none',
+          fontSize: '13px',
+          fontWeight: 600,
+          textDecoration: 'none',
+          pointerEvents: locked ? 'none' : 'auto',
+        }}
+      >
+        {locked ? 'Prérequis manquants' : 'Lancer le lab →'}
+      </Link>
     </section>
   );
 }
 
+const QUICK_LINKS = [
+  { label: 'Issues', to: '/tickets' as const },
+  { label: 'Inbox', to: '/inbox' as const },
+  { label: 'Compétences', to: '/competences' as const },
+  { label: 'Ressources', to: '/ressources' as const },
+  { label: 'Statistiques', to: '/statistiques' as const },
+];
+
 export default function HomePanel() {
+  const { dark } = useContext(LayoutCtx);
   const { data: session } = useAuth();
   const bundle = useFormationBundle();
   const lastSession = getLastSession(bundle);
@@ -125,6 +289,8 @@ export default function HomePanel() {
   const snapshot = getProgressSnapshot(bundle);
 
   const firstName = session?.user?.name?.split(' ')[0] ?? 'Apprenant';
+  const levelLabel =
+    SKILL_LEVEL_LABELS[snapshot.levelLabel] ?? snapshot.levelLabel;
   const xpPercent = Math.min(
     100,
     Math.round((snapshot.xpInLevel / snapshot.xpToNext) * 100),
@@ -135,76 +301,161 @@ export default function HomePanel() {
       ? recommended
       : null;
 
+  const bg = dark ? '#0f0f11' : '#ffffff';
+  const border = dark ? '#1f1f23' : '#e8e8ec';
+  const text = dark ? '#f4f4f5' : '#111827';
+  const muted = dark ? '#71717a' : '#6b7280';
+  const tabBg = dark ? '#18181b' : '#f4f4f5';
+
   return (
-    <main className={styles.main}>
-      <p className={`${styles.eyebrow} ${styles.reveal} ${styles.d2}`}>
-        {formatEyebrowDate(new Date())}
-      </p>
-
-      <h1 className={`${styles.greeting} ${styles.reveal} ${styles.d2}`}>
-        Bon retour,
-        <br />
-        <em className={styles.greetingEm}>{firstName}.</em>
-      </h1>
-      <p className={`${styles.sub} ${styles.reveal} ${styles.d3}`}>
-        {lastSession
-          ? 'Une session t\u2019attend. Reprends là où tu t\u2019es arrêté.'
-          : recommended
-            ? 'Ton prochain lab est prêt. Lance une nouvelle session.'
-            : 'Aucune session en cours pour le moment.'}
-      </p>
-
-      {lastSession ? (
-        <FocalResumeCard session={lastSession} />
-      ) : recommended ? (
-        <FocalRecommendedCard incident={recommended} />
-      ) : (
-        <section className={`${styles.emptyFocal} ${styles.reveal} ${styles.d4}`}>
-          Tous les labs sont complétés — explore tes compétences ou consulte ta boîte de
-          réception.
-        </section>
-      )}
-
-      {altRecommended && (
-        <p className={`${styles.alt} ${styles.reveal} ${styles.d5}`}>
-          Plutôt repartir à neuf ?{' '}
-          <Link
-            to="/tickets/$incidentId"
-            params={{ incidentId: altRecommended.ticketRouteId }}
-            className={styles.altLink}
+    <div
+      style={{
+        height: '100%',
+        overflowY: 'auto',
+        background: bg,
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
+      }}
+    >
+      <div style={{ maxWidth: '880px', margin: '0 auto', padding: '28px 24px 48px' }}>
+        <header style={{ marginBottom: '28px' }}>
+          <p style={{ margin: '0 0 6px', fontSize: '12px', color: muted }}>
+            {formatDate(new Date())}
+          </p>
+          <h1
+            style={{
+              margin: '0 0 6px',
+              fontSize: '22px',
+              fontWeight: 600,
+              color: text,
+              letterSpacing: '-0.02em',
+            }}
           >
-            Lance un nouveau lab — {altRecommended.node.title} (+{altRecommended.node.xp}&nbsp;XP)
-          </Link>
-        </p>
-      )}
+            Bon retour, {firstName}
+          </h1>
+          <p style={{ margin: 0, fontSize: '14px', color: muted }}>
+            {bundle.referential?.treeLabel ?? 'Parcours Kyernal Arena'}
+          </p>
+        </header>
 
-      <div className={`${styles.progressStrip} ${styles.reveal} ${styles.d6}`}>
-        <span className={styles.lvl}>{snapshot.levelLabel}</span>
-        <span className={styles.xpBar}>
-          <span className={styles.xpBarFill} style={{ width: `${xpPercent}%` }} />
-        </span>
-        <span className={styles.xp}>
-          {snapshot.xpInLevel} / {snapshot.xpToNext} XP
-        </span>
-        <span className={styles.auto}>
-          Autonomie <b>{AUTONOMY_SCORE}</b>
-        </span>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gap: '12px',
+            marginBottom: '28px',
+          }}
+        >
+          <StatCard
+            label="Niveau"
+            value={levelLabel}
+            hint={`${snapshot.totalXp} XP · ${xpPercent}% vers le suivant`}
+            dark={dark}
+          />
+          <StatCard
+            label="Labs"
+            value={`${snapshot.completedLabs}/${snapshot.totalLabs}`}
+            hint={
+              snapshot.inProgressLab
+                ? `En cours : ${snapshot.inProgressLab}`
+                : 'Aucun lab en cours'
+            }
+            dark={dark}
+          />
+          <StatCard
+            label="Autonomie"
+            value={`${AUTONOMY_SCORE}%`}
+            hint="Score mock · session suivante"
+            dark={dark}
+          />
+        </div>
+
+        <section style={{ marginBottom: '24px' }}>
+          <h2
+            style={{
+              margin: '0 0 12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: muted,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {lastSession ? 'Session en cours' : 'Prochain lab'}
+          </h2>
+          {lastSession ? (
+            <SessionCard session={lastSession} dark={dark} />
+          ) : recommended ? (
+            <RecommendedCard incident={recommended} dark={dark} />
+          ) : (
+            <div
+              style={{
+                padding: '24px',
+                borderRadius: '8px',
+                border: `1px dashed ${border}`,
+                color: muted,
+                fontSize: '13px',
+                textAlign: 'center',
+              }}
+            >
+              Tous les labs sont complétés. Consulte tes compétences ou ton inbox.
+            </div>
+          )}
+        </section>
+
+        {altRecommended && (
+          <section style={{ marginBottom: '24px' }}>
+            <h2
+              style={{
+                margin: '0 0 12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: muted,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Alternative
+            </h2>
+            <RecommendedCard incident={altRecommended} dark={dark} />
+          </section>
+        )}
+
+        <section>
+          <h2
+            style={{
+              margin: '0 0 12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: muted,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Accès rapide
+          </h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {QUICK_LINKS.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: tabBg,
+                  color: text,
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  border: `1px solid ${border}`,
+                }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
-
-      <nav className={`${styles.quietNav} ${styles.reveal} ${styles.d6}`}>
-        <Link to="/competences" className={styles.quietLink}>
-          Compétences
-        </Link>
-        <Link to="/inbox" className={styles.quietLink}>
-          Boîte de réception
-        </Link>
-        <Link to="/statistiques" className={styles.quietLink}>
-          Statistiques
-        </Link>
-        <Link to="/ressources" className={styles.quietLink}>
-          Ressources
-        </Link>
-      </nav>
-    </main>
+    </div>
   );
 }
